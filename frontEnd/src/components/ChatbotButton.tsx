@@ -293,46 +293,54 @@ export function ChatbotButton() {
                     }`}
                   >
                     {msg.role === 'assistant' && !msg.isError ? (
-                      <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:ml-4 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:ml-4 [&_ol]:mb-2 [&_a]:underline [&_table]:w-full [&_table]:my-3 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-2 [&_th]:text-left [&_th]:text-base [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_td]:text-base [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-100 [&_tbody>tr]:transition-colors break-words overflow-x-auto">
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeRaw]}
-                          components={{
-                            a: ({ node, href, children, ...props }) => {
-                              if (href?.startsWith('/product/')) {
+                      msg.content === '' ? (
+                        <div className="flex space-x-1.5 h-6 items-center px-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                      ) : (
+                        <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:ml-4 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:ml-4 [&_ol]:mb-2 [&_a]:underline [&_table]:w-full [&_table]:my-3 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-2 [&_th]:text-left [&_th]:text-base [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_td]:text-base [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-100 [&_tbody>tr]:transition-colors break-words overflow-x-auto">
+                          <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeRaw]}
+                            components={{
+                              a: ({ node, href, children, ...props }) => {
+                                if (href?.startsWith('/product/')) {
+                                  return (
+                                    <button
+                                      data-product="true"
+                                      onClick={(e) => { e.stopPropagation(); navigate(href); }}
+                                      className="text-left bg-transparent border-none text-[#059669] hover:text-[#047857] hover:underline cursor-pointer transition-colors p-0 m-0 font-semibold"
+                                    >
+                                      {children}
+                                    </button>
+                                  );
+                                }
+                                return <a href={href} className="text-[#059669] hover:underline" {...props}>{children}</a>;
+                              },
+                              tr: (props) => {
                                 return (
-                                  <button
-                                    data-product="true"
-                                    onClick={(e) => { e.stopPropagation(); navigate(href); }}
-                                    className="text-left bg-transparent border-none text-[#059669] hover:text-[#047857] hover:underline cursor-pointer transition-colors p-0 m-0 font-semibold"
+                                  <tr
+                                    {...props}
+                                    onClick={(e) => {
+                                      if (e.currentTarget.querySelector('th')) return; // Ignore header rows
+                                      const btn = e.currentTarget.querySelector('[data-product="true"]');
+                                      if (btn) {
+                                        (btn as HTMLButtonElement).click();
+                                      }
+                                    }}
                                   >
-                                    {children}
-                                  </button>
+                                    {props.children}
+                                  </tr>
                                 );
                               }
-                              return <a href={href} className="text-[#059669] hover:underline" {...props}>{children}</a>;
-                            },
-                            tr: (props) => {
-                              return (
-                                <tr
-                                  {...props}
-                                  onClick={(e) => {
-                                    if (e.currentTarget.querySelector('th')) return; // Ignore header rows
-                                    const btn = e.currentTarget.querySelector('[data-product="true"]');
-                                    if (btn) {
-                                      (btn as HTMLButtonElement).click();
-                                    }
-                                  }}
-                                >
-                                  {props.children}
-                                </tr>
-                              );
-                            }
-                          }}
-                        >
-                          {msg.content}
-                        </ReactMarkdown>
-                      </div>
+                            }}
+                          >
+                            {msg.content}
+                          </ReactMarkdown>
+                        </div>
+                      )
                     ) : (
                       msg.content
                     )}
