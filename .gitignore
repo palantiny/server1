@@ -1,3 +1,4 @@
 frontEnd/node_modules/
 frontEnd/build/
 frontEnd/.DS_Store
+.env
