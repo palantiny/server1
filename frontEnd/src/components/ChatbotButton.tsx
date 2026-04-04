@@ -27,7 +27,7 @@ export function ChatbotButton() {
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [frontendContext, setFrontendContext] = useState<'PRICE' | 'ORDER' | null>(null);
   const [message, setMessage] = useState('');
-  
+
   const [sessionId, setSessionId] = useState(() => {
     const saved = sessionStorage.getItem(SESSION_KEY);
     if (saved) return saved;
@@ -58,7 +58,7 @@ export function ChatbotButton() {
   // Handle resetting the chat (Start new conversation)
   const handleResetChat = async () => {
     if (isStreaming) return;
-    
+
     // Attempt to delete DB history for the current user
     try {
       await fetch(`${import.meta.env.VITE_API_BASE_URL ?? ""}/api/v1/chat/${sessionId}/history?user_id=user`, {
@@ -73,7 +73,7 @@ export function ChatbotButton() {
     sessionStorage.setItem(SESSION_KEY, newId);
     setMessages(DEFAULT_MESSAGES);
   };
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll when messages update
@@ -87,7 +87,7 @@ export function ChatbotButton() {
   const simulateTyping = async (text: string) => {
     setIsStreaming(true);
     setMessages((prev: ChatMessage[]) => [...prev, { role: 'assistant', content: '' }]);
-    
+
     for (let i = 0; i < text.length; i++) {
       await new Promise(resolve => setTimeout(resolve, 30));
       setMessages((prev: ChatMessage[]) => {
@@ -113,7 +113,7 @@ export function ChatbotButton() {
       simulateTyping('어떤 약재 가격을 알고 싶으신가요?');
       return;
     }
-    
+
     if (userMessage === '약재 주문하고 싶어요.') {
       setFrontendContext('ORDER');
       setMessages((prev: ChatMessage[]) => [...prev, { role: 'user', content: userMessage }]);
@@ -149,7 +149,7 @@ export function ChatbotButton() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: backendPayloadMessage, user_id: 'user' }), // Send the intercepted message
       });
-      
+
       if (!postResponse.ok) {
         throw new Error('메시지 전송에 실패했습니다.');
       }
@@ -157,10 +157,10 @@ export function ChatbotButton() {
       // 3. Connect to stream and read SSE
       const response = await streamPromise;
       if (!response.body) throw new Error('스트림을 연결할 수 없습니다.');
-      
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      
+
       // Add empty assistant message to append chunks to
       setMessages((prev: ChatMessage[]) => [...prev, { role: 'assistant', content: '' }]);
 
@@ -173,18 +173,18 @@ export function ChatbotButton() {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        
+
         // Keep the last incomplete line in buffer
         buffer = lines.pop() || '';
 
         for (const line of lines) {
           if (line.trim() === '') continue;
-          
+
           if (line.startsWith('data: ')) {
             const jsonStr = line.replace('data: ', '');
             try {
               const data = JSON.parse(jsonStr);
-              
+
               if (data.type === 'end') {
                 done = true;
                 break;
@@ -272,8 +272,8 @@ export function ChatbotButton() {
           <div className="flex-1 p-4 overflow-y-auto bg-gray-50 flex flex-col">
             <div className="space-y-4">
               {messages.map((msg: ChatMessage, idx: number) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   className={`flex items-start gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                 >
                   {/* Avatar only for assistant */}
@@ -283,14 +283,13 @@ export function ChatbotButton() {
                     </div>
                   )}
                   {/* Message Bubble */}
-                  <div 
-                    className={`rounded-lg px-4 py-3 shadow-sm max-w-[80%] text-base ${
-                      msg.role === 'user' 
-                        ? 'bg-[#059669] text-white whitespace-pre-wrap' 
-                        : msg.isError 
+                  <div
+                    className={`rounded-lg px-4 py-3 shadow-sm max-w-[80%] text-base ${msg.role === 'user'
+                        ? 'bg-[#059669] text-white whitespace-pre-wrap'
+                        : msg.isError
                           ? 'bg-red-50 text-red-600 border border-red-200 whitespace-pre-wrap'
                           : 'bg-white text-gray-700'
-                    }`}
+                      }`}
                   >
                     {msg.role === 'assistant' && !msg.isError ? (
                       msg.content === '' ? (
@@ -300,8 +299,8 @@ export function ChatbotButton() {
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                         </div>
                       ) : (
-                        <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-2 [&_a]:underline [&_table]:w-full [&_table]:my-3 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-2 [&_th]:text-left [&_th]:text-base [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_td]:text-base [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-100 [&_tbody>tr]:transition-colors break-words overflow-x-auto">
-                          <ReactMarkdown 
+                        <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_a]:underline [&_table]:w-full [&_table]:my-3 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-2 [&_th]:text-left [&_th]:text-base [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_td]:text-base [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-100 [&_tbody>tr]:transition-colors break-words overflow-x-auto">
+                          <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             rehypePlugins={[rehypeRaw]}
                             components={{
@@ -347,17 +346,17 @@ export function ChatbotButton() {
                   </div>
                 </div>
               ))}
-              
+
               {/* Reference to scroll to latest messages */}
               <div ref={messagesEndRef} />
-              
+
               {/* Quick Questions (only show if few messages or initially) */}
               {messages.length === 1 && (
                 <div className="space-y-2 mt-4">
                   <p className="text-sm text-gray-500 px-2 text-center">자주 묻는 질문</p>
                   <div className="space-y-2">
                     {['약재 가격 확인하고 싶어요.', '약재 주문하고 싶어요.'].map((q) => (
-                      <button 
+                      <button
                         key={q}
                         onClick={() => handleSendMessage(q)}
                         disabled={isStreaming}
@@ -390,11 +389,10 @@ export function ChatbotButton() {
               <Button
                 onClick={() => handleSendMessage()}
                 disabled={!message.trim() || isStreaming}
-                className={`h-12 px-5 rounded-[8px] transition-colors ${
-                  message.trim() && !isStreaming 
-                    ? 'bg-[#059669] hover:bg-[#047857] text-white' 
+                className={`h-12 px-5 rounded-[8px] transition-colors ${message.trim() && !isStreaming
+                    ? 'bg-[#059669] hover:bg-[#047857] text-white'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
+                  }`}
               >
                 <Send className="w-4 h-4" />
               </Button>
