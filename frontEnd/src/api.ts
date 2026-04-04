@@ -1,5 +1,45 @@
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL ?? ""}/api/v1`;
 
+/** localStorage 키 (MVP 로그인 JWT) */
+export const TOKEN_STORAGE_KEY = "palantiny_token";
+
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+}
+
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+}
+
+export async function loginUser(username: string, password: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    let message = "로그인에 실패했습니다.";
+    try {
+      const err = await res.json();
+      if (typeof err.detail === "string") {
+        message = err.detail;
+      } else if (Array.isArray(err.detail) && err.detail[0]?.msg) {
+        message = err.detail[0].msg;
+      }
+    } catch {
+      /* ignore */
+    }
+    throw new Error(message);
+  }
+  const data = (await res.json()) as { access_token: string };
+  setToken(data.access_token);
+}
+
 export interface HerbItem {
   id: string;
   name: string;

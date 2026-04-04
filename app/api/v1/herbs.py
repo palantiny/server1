@@ -7,6 +7,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.database import async_session_maker
 
@@ -27,32 +28,43 @@ async def get_herbs():
     han_medicine 테이블을 기반으로, price_domestic/price_imported에서 가격 정보를 보충.
     """
     async with async_session_maker() as session:
-        # han_medicine에서 기본 정보 조회
-        result = await session.execute(text("""
-            SELECT
-                hm.md_seq AS id,
-                TRIM(hm.md_title_kor) AS name,
-                COALESCE(TRIM(hm.md_title_chn), '') AS name_chn,
-                COALESCE(TRIM(hm.md_title_eng), '') AS name_eng,
-                COALESCE(TRIM(hm.md_origin_kor), '') AS origin,
-                COALESCE(hm.md_price, 0) AS price,
-                COALESCE(hm.md_qty, 0) AS qty,
-                COALESCE(hm.md_status, 'use') AS status,
-                COALESCE(TRIM(hm.md_desc_kor), '') AS description,
-                COALESCE(TRIM(hm.md_feature_kor), '') AS feature,
-                COALESCE(TRIM(hm.md_note_kor), '') AS note,
-                COALESCE(TRIM(hm.md_interact_kor), '') AS interaction,
-                COALESCE(TRIM(hm.md_relate_kor), '') AS related,
-                COALESCE(TRIM(hm.md_property_kor), '') AS property,
-                hm.herb_id AS herb_id
-            FROM han_medicine hm
-            WHERE hm.md_title_kor IS NOT NULL
-              AND TRIM(hm.md_title_kor) != ''
-            ORDER BY hm.md_title_kor
-        """))
+        # han_medicine에서 기본 정보 조회 (herb_id는 마이그레이션으로만 추가되므로 SELECT 제외)
+        try:
+            result = await session.execute(text("""
+                SELECT
+                    hm.md_seq AS id,
+                    TRIM(hm.md_title_kor) AS name,
+                    COALESCE(TRIM(hm.md_title_chn), '') AS name_chn,
+                    COALESCE(TRIM(hm.md_title_eng), '') AS name_eng,
+                    COALESCE(TRIM(hm.md_origin_kor), '') AS origin,
+                    COALESCE(hm.md_price, 0) AS price,
+                    COALESCE(hm.md_qty, 0) AS qty,
+                    COALESCE(hm.md_status, 'use') AS status,
+                    COALESCE(TRIM(hm.md_desc_kor), '') AS description,
+                    COALESCE(TRIM(hm.md_feature_kor), '') AS feature,
+                    COALESCE(TRIM(hm.md_note_kor), '') AS note,
+                    COALESCE(TRIM(hm.md_interact_kor), '') AS interaction,
+                    COALESCE(TRIM(hm.md_relate_kor), '') AS related,
+                    COALESCE(TRIM(hm.md_property_kor), '') AS property
+                FROM han_medicine hm
+                WHERE hm.md_title_kor IS NOT NULL
+                  AND TRIM(hm.md_title_kor) != ''
+                ORDER BY hm.md_title_kor
+            """))
+        except SQLAlchemyError as e:
+            logger.exception("get_herbs: han_medicine 조회 실패")
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "han_medicine 테이블을 읽을 수 없습니다. "
+                    "스키마·데이터 적재 후 다시 시도하세요 (예: server2/scripts/db_migration.py, "
+                    "DATABASE_URL은 로컬 포트에 맞출 것)."
+                ),
+            ) from e
+
         medicines = [_row_to_dict(row) for row in result]
 
-        # price 테이블에서 가격 정보 가져오기 (각각 조회 후 합침 - 타입 불일치 방지)
+        # price 테이블에서 가격 정보 (없거나 컬럼 불일치 시 건너뜀)
         _price_sql = """
             SELECT
                 "약재명" AS herb_name,
@@ -69,9 +81,13 @@ async def get_herbs():
                 market_type
             FROM {table}
         """
-        dom_result = await session.execute(text(_price_sql.replace("{table}", "price_domestic")))
-        imp_result = await session.execute(text(_price_sql.replace("{table}", "price_imported")))
-        prices = [_row_to_dict(row) for row in dom_result] + [_row_to_dict(row) for row in imp_result]
+        prices: list[dict] = []
+        for tbl in ("price_domestic", "price_imported"):
+            try:
+                pr = await session.execute(text(_price_sql.replace("{table}", tbl)))
+                prices.extend(_row_to_dict(row) for row in pr)
+            except SQLAlchemyError as e:
+                logger.warning("get_herbs: 가격 테이블 %s 건너뜀: %s", tbl, e)
 
         # 약재명 → 가격 정보 매핑 (첫 번째 매칭)
         price_map: dict[str, dict] = {}
@@ -155,27 +171,34 @@ async def get_herb_detail(herb_id: str):
     """
     async with async_session_maker() as session:
         # 기본 정보
-        result = await session.execute(text("""
-            SELECT
-                hm.md_seq AS id,
-                TRIM(hm.md_title_kor) AS name,
-                COALESCE(TRIM(hm.md_title_chn), '') AS name_chn,
-                COALESCE(TRIM(hm.md_title_eng), '') AS name_eng,
-                COALESCE(TRIM(hm.md_origin_kor), '') AS origin,
-                COALESCE(hm.md_price, 0) AS price,
-                COALESCE(hm.md_qty, 0) AS qty,
-                COALESCE(hm.md_status, 'use') AS status,
-                COALESCE(TRIM(hm.md_desc_kor), '') AS description,
-                COALESCE(TRIM(hm.md_feature_kor), '') AS feature,
-                COALESCE(TRIM(hm.md_note_kor), '') AS note,
-                COALESCE(TRIM(hm.md_interact_kor), '') AS interaction,
-                COALESCE(TRIM(hm.md_relate_kor), '') AS related,
-                COALESCE(TRIM(hm.md_property_kor), '') AS property,
-                hm.md_code AS code,
-                hm.herb_id AS herb_id
-            FROM han_medicine hm
-            WHERE hm.md_seq = :herb_id
-        """), {"herb_id": int(herb_id)})
+        try:
+            result = await session.execute(text("""
+                SELECT
+                    hm.md_seq AS id,
+                    TRIM(hm.md_title_kor) AS name,
+                    COALESCE(TRIM(hm.md_title_chn), '') AS name_chn,
+                    COALESCE(TRIM(hm.md_title_eng), '') AS name_eng,
+                    COALESCE(TRIM(hm.md_origin_kor), '') AS origin,
+                    COALESCE(hm.md_price, 0) AS price,
+                    COALESCE(hm.md_qty, 0) AS qty,
+                    COALESCE(hm.md_status, 'use') AS status,
+                    COALESCE(TRIM(hm.md_desc_kor), '') AS description,
+                    COALESCE(TRIM(hm.md_feature_kor), '') AS feature,
+                    COALESCE(TRIM(hm.md_note_kor), '') AS note,
+                    COALESCE(TRIM(hm.md_interact_kor), '') AS interaction,
+                    COALESCE(TRIM(hm.md_relate_kor), '') AS related,
+                    COALESCE(TRIM(hm.md_property_kor), '') AS property,
+                    hm.md_code AS code
+                FROM han_medicine hm
+                WHERE hm.md_seq = :herb_id
+            """), {"herb_id": int(herb_id)})
+        except SQLAlchemyError as e:
+            logger.exception("get_herb_detail: han_medicine 조회 실패")
+            raise HTTPException(
+                status_code=503,
+                detail="han_medicine 테이블을 읽을 수 없습니다. DB 스키마·데이터를 확인하세요.",
+            ) from e
+
         row = result.first()
 
         if not row:
@@ -205,45 +228,56 @@ async def get_herb_detail(herb_id: str):
         """
         price_row = None
         for tbl in ["price_domestic", "price_imported"]:
-            pr = await session.execute(text(_detail_price_sql.replace("{table}", tbl)), {"name": name})
-            price_row = pr.first()
-            if price_row:
-                break
+            try:
+                pr = await session.execute(text(_detail_price_sql.replace("{table}", tbl)), {"name": name})
+                price_row = pr.first()
+                if price_row:
+                    break
+            except SQLAlchemyError as e:
+                logger.warning("get_herb_detail: 가격 테이블 %s 건너뜀: %s", tbl, e)
         price_info = _row_to_dict(price_row) if price_row else {}
 
         # han_medicine_dj에서 추가 정보 (성, 미, 귀경, 사상)
-        dj_result = await session.execute(text("""
-            SELECT
-                COALESCE(TRIM(mm_state), '') AS nature,
-                COALESCE(TRIM(mm_taste), '') AS taste,
-                COALESCE(TRIM(mm_object), '') AS meridian,
-                COALESCE(TRIM(mm_feature), '') AS constitution,
-                COALESCE(TRIM(mm_origin_kor), '') AS dj_origin,
-                COALESCE(mm_price, 0) AS dj_price,
-                COALESCE(mm_qty, 0) AS dj_qty
-            FROM han_medicine_dj
-            WHERE TRIM(SPLIT_PART(mm_title_kor, '(', 1)) = :name
-            LIMIT 1
-        """), {"name": name})
-        dj_row = dj_result.first()
-        dj_info = _row_to_dict(dj_row) if dj_row else {}
+        dj_info: dict = {}
+        try:
+            dj_result = await session.execute(text("""
+                SELECT
+                    COALESCE(TRIM(mm_state), '') AS nature,
+                    COALESCE(TRIM(mm_taste), '') AS taste,
+                    COALESCE(TRIM(mm_object), '') AS meridian,
+                    COALESCE(TRIM(mm_feature), '') AS constitution,
+                    COALESCE(TRIM(mm_origin_kor), '') AS dj_origin,
+                    COALESCE(mm_price, 0) AS dj_price,
+                    COALESCE(mm_qty, 0) AS dj_qty
+                FROM han_medicine_dj
+                WHERE TRIM(SPLIT_PART(mm_title_kor, '(', 1)) = :name
+                LIMIT 1
+            """), {"name": name})
+            dj_row = dj_result.first()
+            dj_info = _row_to_dict(dj_row) if dj_row else {}
+        except SQLAlchemyError as e:
+            logger.warning("get_herb_detail: han_medicine_dj 건너뜀: %s", e)
 
         # warehouse에서 최근 입고 정보
-        wh_result = await session.execute(text("""
-            SELECT
-                COALESCE(TRIM(wh_maker), '') AS warehouse_maker,
-                COALESCE(TRIM(wh_origin), '') AS warehouse_origin,
-                COALESCE(wh_date, '') AS warehouse_date,
-                COALESCE(wh_expired, '') AS warehouse_expired,
-                COALESCE(wh_qty, 0) AS warehouse_qty,
-                COALESCE(wh_price, 0) AS warehouse_price
-            FROM han_warehouse
-            WHERE TRIM(wh_title) = :name
-            ORDER BY wh_date DESC
-            LIMIT 1
-        """), {"name": name})
-        wh_row = wh_result.first()
-        wh_info = _row_to_dict(wh_row) if wh_row else {}
+        wh_info: dict = {}
+        try:
+            wh_result = await session.execute(text("""
+                SELECT
+                    COALESCE(TRIM(wh_maker), '') AS warehouse_maker,
+                    COALESCE(TRIM(wh_origin), '') AS warehouse_origin,
+                    COALESCE(wh_date, '') AS warehouse_date,
+                    COALESCE(wh_expired, '') AS warehouse_expired,
+                    COALESCE(wh_qty, 0) AS warehouse_qty,
+                    COALESCE(wh_price, 0) AS warehouse_price
+                FROM han_warehouse
+                WHERE TRIM(wh_title) = :name
+                ORDER BY wh_date DESC
+                LIMIT 1
+            """), {"name": name})
+            wh_row = wh_result.first()
+            wh_info = _row_to_dict(wh_row) if wh_row else {}
+        except SQLAlchemyError as e:
+            logger.warning("get_herb_detail: han_warehouse 건너뜀: %s", e)
 
         # 가격 결정
         display_price = 0

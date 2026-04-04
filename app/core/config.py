@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: str = "*"
 
+    # MVP 로그인 (admin / 1234 등)
+    ADMIN_ID: str = "admin"
+    ADMIN_PASSWORD: str = "1234"
+    JWT_SECRET: str = "change-me-in-production"
+    JWT_EXPIRE_HOURS: int = 24
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -5,6 +5,7 @@ import { Input } from './ui/input';
 import { Link } from 'react-router';
 import { useState, useEffect } from 'react';
 import { ChatbotButton } from './ChatbotButton';
+import { LogoutButton } from './LogoutButton';
 import { fetchHerbs, type HerbItem } from '../api';
 
 import defaultHerbImg from 'figma:asset/19e49e0900284b91c8363d4044be913cd97e16b9.png';
@@ -203,6 +204,7 @@ export function BuyerDashboard() {
                   0
                 </span>
               </Button>
+              <LogoutButton />
             </div>
           </div>
         </div>

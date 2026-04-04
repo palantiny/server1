@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { LogoutButton } from './LogoutButton';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import {
@@ -228,6 +229,7 @@ export function MyPage() {
                   0
                 </span>
               </Button>
+              <LogoutButton />
               <ChatbotButton />
             </div>
           </div>

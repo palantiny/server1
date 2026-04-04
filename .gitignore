@@ -1,4 +1,28 @@
+# 환경·비밀 (반드시 제외)
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Node / Vite (프론트)
 frontEnd/node_modules/
 frontEnd/build/
-frontEnd/.DS_Store
-.env
+frontEnd/.vite/
+frontEnd/dist/
+
+# OS
+.DS_Store
+**/.DS_Store
+Thumbs.db
+
+# 로그·캐시
+*.log
+.pytest_cache/
+.mypy_cache/

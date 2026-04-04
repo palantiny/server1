@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import herbs
+from app.api.v1 import auth, herbs
 from app.core.database import close_db, init_db
 
 logging.basicConfig(level=logging.INFO)
@@ -39,6 +39,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(herbs.router, prefix="/api/v1")
 
 
