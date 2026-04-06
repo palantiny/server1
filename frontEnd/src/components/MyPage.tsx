@@ -47,11 +47,7 @@ const mockCancellations: MockCancellation[] = [
   { id: '2', type: '교환', product_name: '[씨케이] 국내산 씨케이복령 800g', price: 52000, quantity: 5, status: '교환완료', reason: '사이즈 변경', created_at: '2026-02-15T00:00:00', image: img2 },
 ];
 
-const mockCartItems: MockCartItem[] = [
-  { id: '1', product_id: 'mock-1', product_name: '[씨케이] 중국산 씨케이감초 600g', price: 48000, quantity: 5, image: img1 },
-  { id: '2', product_id: 'mock-2', product_name: '[씨케이] 중국산 씨케이마황 450g', price: 32000, quantity: 3, image: img2 },
-  { id: '3', product_id: 'mock-3', product_name: '[씨케이] 중국산 씨케이설복령 600g', price: 33000, quantity: 2, image: img10 },
-];
+const mockCartItems: MockCartItem[] = [];
 
 const mockTaxInvoices: TaxInvoice[] = [
   { id: '1', invoice_number: 'TAX-2026-0305-001', amount: 816000, status: '발행완료', created_at: '2026-03-05T00:00:00' },
@@ -72,7 +68,7 @@ const formatDate = (iso: string) => iso.slice(0, 10).replace(/-/g, '.');
 type MenuTab = 'orders' | 'statements' | 'cancellations' | 'cart' | 'taxInvoices' | 'payments';
 
 export function MyPage() {
-  const [activeTab, setActiveTab] = useState<MenuTab>('orders');
+  const [activeTab, setActiveTab] = useState<MenuTab>('cart');
   const [selectedYear, setSelectedYear] = useState('2026');
 
   // 실제 데이터 state (API 성공 시 채워짐, 빈 배열이면 mock 사용)
