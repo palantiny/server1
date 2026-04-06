@@ -5,10 +5,11 @@ GET /herbs/{herb_id} : 약재 상세 정보
 """
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api.deps import get_current_user
 from app.core.database import async_session_maker
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ def _row_to_dict(row) -> dict:
 
 
 @router.get("")
-async def get_herbs():
+async def get_herbs(_: str = Depends(get_current_user)):
     """
     전체 약재 목록 조회.
     han_medicine 테이블을 기반으로, price_domestic/price_imported에서 가격 정보를 보충.
@@ -164,7 +165,7 @@ async def get_herbs():
 
 
 @router.get("/{herb_id}")
-async def get_herb_detail(herb_id: str):
+async def get_herb_detail(herb_id: str, _: str = Depends(get_current_user)):
     """
     약재 상세 정보 조회.
     han_medicine + han_medicine_dj + warehouse 정보를 조합.

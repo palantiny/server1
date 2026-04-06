@@ -78,14 +78,19 @@ export interface HerbDetail extends HerbItem {
   warehouseExpired: string;
 }
 
+function authHeaders(): HeadersInit {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export async function fetchHerbs(): Promise<{ herbs: HerbItem[]; total: number }> {
-  const res = await fetch(`${API_BASE}/herbs`);
+  const res = await fetch(`${API_BASE}/herbs`, { headers: authHeaders() });
   if (!res.ok) throw new Error("약재 목록을 불러오는데 실패했습니다.");
   return res.json();
 }
 
 export async function fetchHerbDetail(id: string): Promise<HerbDetail> {
-  const res = await fetch(`${API_BASE}/herbs/${id}`);
+  const res = await fetch(`${API_BASE}/herbs/${id}`, { headers: authHeaders() });
   if (!res.ok) throw new Error("약재 상세 정보를 불러오는데 실패했습니다.");
   return res.json();
 }
