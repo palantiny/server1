@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Link } from 'react-router';
-import { ShoppingCart, Leaf } from 'lucide-react';
+import { ShoppingCart, Leaf, Check } from 'lucide-react';
+import { addToCart } from '../api';
 
 interface ProductCardProps {
   id: string;
@@ -29,10 +31,24 @@ export function ProductCard({
   image,
   packagingUnitG,
 }: ProductCardProps) {
-  const handleBuyClick = (e: React.MouseEvent) => {
+  const [cartLoading, setCartLoading] = useState(false);
+  const [cartAdded, setCartAdded] = useState(false);
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    alert('바로 구매 기능이 준비 중입니다.');
+    if (cartLoading || stockStatus === 'out') return;
+    setCartLoading(true);
+    try {
+      await addToCart({ product_id: id, product_name: name, price, quantity: 1 });
+      window.dispatchEvent(new Event('cart-updated'));
+      setCartAdded(true);
+      setTimeout(() => setCartAdded(false), 2000);
+    } catch {
+      alert('장바구니 추가에 실패했습니다.');
+    } finally {
+      setCartLoading(false);
+    }
   };
 
   const stock = stockStatusConfig[stockStatus] || stockStatusConfig.high;
@@ -86,11 +102,18 @@ export function ProductCard({
               <span>상세정보</span>
             </button>
             <button
-              onClick={handleBuyClick}
-              className="flex-1 py-2 flex items-center justify-center gap-1.5 text-sm transition-all text-white bg-[#059669] border border-[#059669] rounded-lg hover:bg-[#047857] hover:border-[#047857]"
+              onClick={handleAddToCart}
+              disabled={cartLoading || stockStatus === 'out'}
+              className={`flex-1 py-2 flex items-center justify-center gap-1.5 text-sm transition-all text-white rounded-lg border ${
+                cartAdded
+                  ? 'bg-[#047857] border-[#047857]'
+                  : stockStatus === 'out'
+                  ? 'bg-gray-300 border-gray-300 cursor-not-allowed'
+                  : 'bg-[#059669] border-[#059669] hover:bg-[#047857] hover:border-[#047857]'
+              }`}
             >
-              <ShoppingCart className="w-4 h-4" />
-              <span>바로구매</span>
+              {cartAdded ? <Check className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
+              <span>{cartAdded ? '담김!' : '장바구니'}</span>
             </button>
           </div>
         </div>

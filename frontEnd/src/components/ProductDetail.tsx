@@ -6,7 +6,8 @@ import { ChatbotButton } from './ChatbotButton';
 import { LogoutButton } from './LogoutButton';
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
-import { fetchHerbDetail, type HerbDetail as HerbDetailType } from '../api';
+import { fetchHerbDetail, addToCart, type HerbDetail as HerbDetailType } from '../api';
+import { useCartCount } from '../hooks/useCartCount';
 
 const stockStatusConfig: Record<string, { label: string; color: string }> = {
   high: { label: '충분', color: 'text-[#059669]' },
@@ -21,6 +22,9 @@ export function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [cartLoading, setCartLoading] = useState(false);
+  const [cartAdded, setCartAdded] = useState(false);
+  const cartCount = useCartCount();
 
   useEffect(() => {
     if (!id) return;
@@ -64,6 +68,21 @@ export function ProductDetail() {
 
   const handleQuantityChange = (delta: number) => {
     setQuantity(Math.max(1, quantity + delta));
+  };
+
+  const handleAddToCart = async () => {
+    if (!herb || cartLoading) return;
+    setCartLoading(true);
+    try {
+      await addToCart({ product_id: herb.id, product_name: herb.name, price: herb.price, quantity });
+      window.dispatchEvent(new Event('cart-updated'));
+      setCartAdded(true);
+      setTimeout(() => setCartAdded(false), 2000);
+    } catch {
+      alert('장바구니 추가에 실패했습니다.');
+    } finally {
+      setCartLoading(false);
+    }
   };
 
   const stock = stockStatusConfig[herb.stockStatus] || stockStatusConfig.high;
@@ -110,12 +129,16 @@ export function ProductDetail() {
               <Button variant="ghost" size="sm" className="text-gray-600 hover:text-[#059669]">
                 <Bell className="w-5 h-5" />
               </Button>
-              <Button variant="ghost" size="sm" className="relative text-gray-600 hover:text-[#059669]">
-                <ShoppingCart className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 bg-[#059669] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  0
-                </span>
-              </Button>
+              <Link to="/mypage">
+                <Button variant="ghost" size="sm" className="relative text-gray-600 hover:text-[#059669]">
+                  <ShoppingCart className="w-5 h-5" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-[#059669] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
+                </Button>
+              </Link>
               <LogoutButton />
             </div>
           </div>
@@ -383,8 +406,17 @@ export function ProductDetail() {
                 <Button className="w-full h-12 bg-[#059669] hover:bg-[#047857] text-white rounded-[8px]">
                   바로구매
                 </Button>
-                <Button variant="outline" className="w-full h-12 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-[8px]">
-                  장바구니
+                <Button
+                  variant="outline"
+                  onClick={handleAddToCart}
+                  disabled={cartLoading || herb?.stockStatus === 'out'}
+                  className={`w-full h-12 rounded-[8px] transition-colors ${
+                    cartAdded
+                      ? 'border-[#059669] bg-[#059669]/5 text-[#059669]'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {cartAdded ? '장바구니에 담겼습니다!' : cartLoading ? '담는 중...' : '장바구니'}
                 </Button>
               </div>
 

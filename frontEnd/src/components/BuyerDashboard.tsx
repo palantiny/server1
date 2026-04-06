@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { ChatbotButton } from './ChatbotButton';
 import { LogoutButton } from './LogoutButton';
 import { fetchHerbs, type HerbItem } from '../api';
+import { useCartCount } from '../hooks/useCartCount';
 
 import defaultHerbImg from 'figma:asset/19e49e0900284b91c8363d4044be913cd97e16b9.png';
 
@@ -95,6 +96,7 @@ export function BuyerDashboard() {
   });
   const [sortBy, setSortBy] = useState('default');
   const [herbs, setHerbs] = useState<HerbItem[]>([]);
+  const cartCount = useCartCount();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -240,12 +242,16 @@ export function BuyerDashboard() {
               <Button variant="ghost" size="sm" className="text-gray-600 hover:text-[#059669]">
                 <Bell className="w-5 h-5" />
               </Button>
-              <Button variant="ghost" size="sm" className="relative text-gray-600 hover:text-[#059669]">
-                <ShoppingCart className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 bg-[#059669] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  0
-                </span>
-              </Button>
+              <Link to="/mypage">
+                <Button variant="ghost" size="sm" className="relative text-gray-600 hover:text-[#059669]">
+                  <ShoppingCart className="w-5 h-5" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-[#059669] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
+                </Button>
+              </Link>
               <LogoutButton />
             </div>
           </div>
