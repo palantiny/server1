@@ -3,7 +3,7 @@ import { ProductCard } from './ProductCard';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Link } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChatbotButton } from './ChatbotButton';
 import { LogoutButton } from './LogoutButton';
 import { fetchHerbs, type HerbItem } from '../api';
@@ -151,7 +151,7 @@ export function BuyerDashboard() {
   };
 
   // 카테고리별 필터링 + 정렬
-  const filteredProducts = herbs
+  const filteredProducts = useMemo(() => herbs
     .filter((herb) => {
       // 검색어 필터
       const matchesSearch = herb.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -176,17 +176,17 @@ export function BuyerDashboard() {
         (selectedOrigins.includes('china') && originCountry === '중국') ||
         (selectedOrigins.includes('vietnam') && originCountry === '베트남');
 
-      // 형상별/부위 필터
+      // 형상별/부위 필터 (이름 포함)
       const matchesForm = selectedForms.length === 0 || selectedForms.some((formId) => {
         const keywords = formKeywords[formId] ?? [];
-        const haystack = `${herb.property} ${herb.description} ${herb.feature}`;
+        const haystack = `${herb.name} ${herb.property} ${herb.description} ${herb.feature}`;
         return keywords.some(kw => haystack.includes(kw));
       });
 
       // 효능 필터
       const matchesEfficacy = selectedEfficacies.length === 0 || selectedEfficacies.some((effId) => {
         const keywords = efficacyKeywords[effId] ?? [];
-        const haystack = `${herb.feature} ${herb.description}`;
+        const haystack = `${herb.name} ${herb.feature} ${herb.description}`;
         return keywords.some(kw => haystack.includes(kw));
       });
 
@@ -197,7 +197,8 @@ export function BuyerDashboard() {
       if (sortBy === 'price-desc') return b.price - a.price;
       if (sortBy === 'name') return a.name.localeCompare(b.name, 'ko');
       return 0;
-    });
+    }),
+  [herbs, searchTerm, selectedInitial, priceRange, selectedOrigins, selectedForms, selectedEfficacies, sortBy]);
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">

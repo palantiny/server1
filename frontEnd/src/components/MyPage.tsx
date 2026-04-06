@@ -78,6 +78,7 @@ export function MyPage() {
   const [taxInvoices, setTaxInvoices] = useState<TaxInvoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [selectedCartIds, setSelectedCartIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     Promise.allSettled([
@@ -95,6 +96,35 @@ export function MyPage() {
       setLoaded(true);
     });
   }, []);
+
+  // 장바구니 선택
+  const toggleCartSelect = (id: string) => {
+    setSelectedCartIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const isAllSelected = cartItems.length > 0 && cartItems.every(i => selectedCartIds.has(i.id));
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedCartIds(new Set());
+    } else {
+      setSelectedCartIds(new Set(cartItems.map(i => i.id)));
+    }
+  };
+
+  const selectedItems = cartItems.filter(i => selectedCartIds.has(i.id));
+  const selectedTotal = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const totalAll = cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+  const handleOrder = (items: typeof cartItems) => {
+    if (items.length === 0) return;
+    const summary = items.map(i => `${i.product_name} × ${i.quantity}`).join('\n');
+    alert(`주문 접수:\n${summary}\n\n합계: ₩${items.reduce((s, i) => s + i.price * i.quantity, 0).toLocaleString()}`);
+  };
 
   // 장바구니 수량 변경
   const handleCartQty = async (id: string, delta: number) => {
@@ -528,90 +558,125 @@ export function MyPage() {
             )}
 
             {activeTab === 'cart' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-[#191F28]">
-                    장바구니 목록
-                  </h3>
-                  <button className="text-sm text-[#059669] hover:text-[#047857] font-medium">
-                    상세보기 →
-                  </button>
-                </div>
-
-                {/* Cart Cards */}
-                {cartItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="border border-gray-200 rounded-[12px] p-6"
-                  >
-                    <div className="flex items-start gap-4">
-                      {/* Product Image */}
-                      <div className="w-20 h-20 bg-gray-100 rounded-[8px] overflow-hidden">
-                        <img
-                          src={(item as { image?: string }).image ?? ''}
-                          alt={item.product_name}
-                          className="w-full h-full object-cover"
+              <div>
+                {cartItems.length === 0 ? (
+                  <div className="text-center py-16 text-gray-400">
+                    <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p>장바구니가 비어있습니다.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* 전체선택 + 주문 버튼 */}
+                    <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={isAllSelected}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 accent-[#059669]"
                         />
-                      </div>
-
-                      {/* Product Info */}
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-medium text-[#191F28]">
-                              {item.product_name}
-                            </h4>
-                            <p className="text-sm text-gray-500 mt-1">
-                              ₩{item.price.toLocaleString()}
-                            </p>
-                          </div>
-
-                          {/* Quantity Controls */}
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-8 h-8 p-0 rounded-[6px]"
-                              onClick={() => handleCartQty(item.id, -1)}
-                            >
-                              <Minus className="w-3 h-3" />
-                            </Button>
-                            <span className="w-8 text-center font-medium">{item.quantity}</span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-8 h-8 p-0 rounded-[6px]"
-                              onClick={() => handleCartQty(item.id, 1)}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </Button>
-                            <span className="ml-2 font-semibold text-[#191F28]">
-                              ₩{(item.price * item.quantity).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 mt-4">
-                          <Button
-                            size="sm"
-                            className="bg-[#059669] hover:bg-[#047857] text-white rounded-[8px]"
-                          >
-                            주문하기
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-red-300 text-red-600 hover:bg-red-50 rounded-[8px]"
-                            onClick={() => handleCartDelete(item.id)}
-                          >
-                            삭제
-                          </Button>
-                        </div>
+                        <span className="text-sm font-medium text-gray-700">
+                          전체선택 ({selectedCartIds.size}/{cartItems.length})
+                        </span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={selectedCartIds.size === 0}
+                          onClick={() => handleOrder(selectedItems)}
+                          className="border-[#059669] text-[#059669] hover:bg-[#059669]/5 rounded-[8px] disabled:opacity-40"
+                        >
+                          선택주문 {selectedCartIds.size > 0 && `(₩${selectedTotal.toLocaleString()})`}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleOrder(cartItems)}
+                          className="bg-[#059669] hover:bg-[#047857] text-white rounded-[8px]"
+                        >
+                          전체주문 (₩{totalAll.toLocaleString()})
+                        </Button>
                       </div>
                     </div>
-                  </div>
-                ))}
+
+                    {/* Cart Cards */}
+                    <div className="space-y-4">
+                      {cartItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`border rounded-[12px] p-5 transition-colors ${
+                            selectedCartIds.has(item.id) ? 'border-[#059669]/40 bg-[#059669]/3' : 'border-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            {/* 체크박스 */}
+                            <input
+                              type="checkbox"
+                              checked={selectedCartIds.has(item.id)}
+                              onChange={() => toggleCartSelect(item.id)}
+                              className="w-4 h-4 accent-[#059669] flex-shrink-0"
+                            />
+
+                            {/* Product Info */}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-[#191F28] truncate">{item.product_name}</h4>
+                              <p className="text-sm text-gray-500 mt-0.5">단가 ₩{item.price.toLocaleString()}</p>
+                            </div>
+
+                            {/* Quantity Controls */}
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-7 h-7 p-0 rounded-[6px]"
+                                onClick={() => handleCartQty(item.id, -1)}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                              <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-7 h-7 p-0 rounded-[6px]"
+                                onClick={() => handleCartQty(item.id, 1)}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+
+                            {/* 금액 */}
+                            <span className="w-28 text-right font-semibold text-[#191F28]">
+                              ₩{(item.price * item.quantity).toLocaleString()}
+                            </span>
+
+                            {/* 삭제 */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-red-300 text-red-500 hover:bg-red-50 rounded-[8px]"
+                              onClick={() => {
+                                handleCartDelete(item.id);
+                                setSelectedCartIds(prev => { const n = new Set(prev); n.delete(item.id); return n; });
+                              }}
+                            >
+                              삭제
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* 하단 합계 */}
+                    <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end items-center gap-4">
+                      <span className="text-gray-500 text-sm">
+                        선택 {selectedCartIds.size}개 · ₩{selectedTotal.toLocaleString()}
+                      </span>
+                      <span className="font-bold text-lg text-[#191F28]">
+                        전체 합계 ₩{totalAll.toLocaleString()}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
