@@ -27,7 +27,9 @@ jobs:
             -x ".git/*" \
             -x "frontEnd/*" \
             -x "**/__pycache__/*" \
-            -x "*.pyc"
+            -x "*.pyc" \
+            -x "*.DS_Store" \
+            -x "*.code-workspace"
 
       - name: Upload bundle to S3
         run: |
