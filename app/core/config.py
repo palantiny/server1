@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: str = "*"
 
+    # Neo4j AuraDB
+    NEO4J_URI: str = ""
+    NEO4J_USERNAME: str = "neo4j"
+    NEO4J_PASSWORD: str = ""
+    NEO4J_DATABASE: str = "neo4j"
+
     # MVP 로그인 (admin / 1234 등)
     ADMIN_ID: str = "admin"
     ADMIN_PASSWORD: str = "1234"
