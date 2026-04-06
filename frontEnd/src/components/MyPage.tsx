@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { LogoutButton } from './LogoutButton';
 import { Button } from './ui/button';
@@ -13,160 +13,122 @@ import {
   FileText,
   CreditCard,
   Wallet,
-  ChevronRight,
   Download,
   Eye,
-  XCircle,
-  RotateCcw,
-  Repeat,
-  RefreshCw,
-  Trash2,
   Plus,
   Minus,
 } from 'lucide-react';
 import { ChatbotButton } from './ChatbotButton';
+import {
+  fetchOrders, fetchCancellations, fetchCart, fetchTaxInvoices, fetchPayments,
+  updateCartItem, deleteCartItem,
+  type Order, type OrderCancellation, type CartItem, type TaxInvoice, type Payment,
+} from '../api';
 
 // 이미지 import
 import img1 from 'figma:asset/19e49e0900284b91c8363d4044be913cd97e16b9.png';
 import img2 from 'figma:asset/a7ff756f68927275d5173e2efd38b483b0992f8d.png';
 import img10 from 'figma:asset/28d322bb13587333bb411b6a213566bd07604045.png';
-import img4 from 'figma:asset/1e0bcf5e2ebb45de5ee77096c77f066fdd9ca5d3.png';
-import img5 from 'figma:asset/e9b24d6b9b12aff3edc3b9eaff8fd1fafd9c0f65.png';
-import img3 from 'figma:asset/8f44c24f5c8da37b59e6fac97f8d2adb34dcc866.png';
 
-// Mock 주문 데이터
-const mockOrders = [
-  {
-    id: '1',
-    date: '2026.3.3',
-    product: '감초',
-    productName: '[씨케이] 중국산 씨케이감초 600g',
-    price: 48000,
-    quantity: 17,
-    status: '배송완료',
-    statusColor: 'text-gray-600',
-    image: img1,
-  },
-  {
-    id: '2',
-    date: '2026.2.24',
-    product: '마황',
-    productName: '[씨케이] 중국산 씨케이마황 450g',
-    price: 32000,
-    quantity: 17,
-    status: '배송중',
-    statusColor: 'text-[#059669]',
-    image: img2,
-  },
-  {
-    id: '3',
-    date: '2026.2.24',
-    product: '설복령',
-    productName: '[씨케이] 중국산 씨케이설복령 600g',
-    price: 33000,
-    quantity: 8,
-    status: '배송중',
-    statusColor: 'text-[#059669]',
-    image: img10,
-  },
+// ── Mock 데이터 (API 데이터 없을 때 fallback) ─────────────
+
+type MockOrder = { id: string; product_name: string; price: number; quantity: number; status: string; created_at: string; image: string };
+type MockCancellation = { id: string; type: string; product_name: string; price: number; quantity: number; status: string; reason: string; created_at: string; image: string };
+type MockCartItem = { id: string; product_id: string; product_name: string; price: number; quantity: number; image: string };
+
+const mockOrders: MockOrder[] = [
+  { id: '1', product_name: '[씨케이] 중국산 씨케이감초 600g', price: 48000, quantity: 17, status: '배송완료', created_at: '2026-03-03T00:00:00', image: img1 },
+  { id: '2', product_name: '[씨케이] 중국산 씨케이마황 450g', price: 32000, quantity: 17, status: '배송중', created_at: '2026-02-24T00:00:00', image: img2 },
+  { id: '3', product_name: '[씨케이] 중국산 씨케이설복령 600g', price: 33000, quantity: 8, status: '배송중', created_at: '2026-02-24T00:00:00', image: img10 },
 ];
 
-// Mock 취소/반품/교환/환불 내역 데이터
-const mockCancellations = [
-  {
-    id: '1',
-    date: '2026.2.20',
-    type: '반품',
-    productName: '[씨케이] 중국산 씨케이백출 500g',
-    price: 45000,
-    quantity: 10,
-    status: '환불완료',
-    statusColor: 'text-[#059669]',
-    reason: '제품 불량',
-    image: img1,
-  },
-  {
-    id: '2',
-    date: '2026.2.15',
-    type: '교환',
-    productName: '[씨케이] 국내산 씨케이복령 800g',
-    price: 52000,
-    quantity: 5,
-    status: '교환완료',
-    statusColor: 'text-gray-600',
-    reason: '사이즈 변경',
-    image: img2,
-  },
+const mockCancellations: MockCancellation[] = [
+  { id: '1', type: '반품', product_name: '[씨케이] 중국산 씨케이백출 500g', price: 45000, quantity: 10, status: '환불완료', reason: '제품 불량', created_at: '2026-02-20T00:00:00', image: img1 },
+  { id: '2', type: '교환', product_name: '[씨케이] 국내산 씨케이복령 800g', price: 52000, quantity: 5, status: '교환완료', reason: '사이즈 변경', created_at: '2026-02-15T00:00:00', image: img2 },
 ];
 
-// Mock 장바구니 데이터
-const mockCartItems = [
-  {
-    id: '1',
-    productName: '[씨케이] 중국산 씨케이감초 600g',
-    price: 48000,
-    quantity: 5,
-    image: img1,
-  },
-  {
-    id: '2',
-    productName: '[씨케이] 중국산 씨케이마황 450g',
-    price: 32000,
-    quantity: 3,
-    image: img2,
-  },
-  {
-    id: '3',
-    productName: '[씨케이] 중국산 씨케이설복령 600g',
-    price: 33000,
-    quantity: 2,
-    image: img10,
-  },
+const mockCartItems: MockCartItem[] = [
+  { id: '1', product_id: 'mock-1', product_name: '[씨케이] 중국산 씨케이감초 600g', price: 48000, quantity: 5, image: img1 },
+  { id: '2', product_id: 'mock-2', product_name: '[씨케이] 중국산 씨케이마황 450g', price: 32000, quantity: 3, image: img2 },
+  { id: '3', product_id: 'mock-3', product_name: '[씨케이] 중국산 씨케이설복령 600g', price: 33000, quantity: 2, image: img10 },
 ];
 
-// Mock 세금계산서 데이터
-const mockTaxInvoices = [
-  {
-    id: '1',
-    date: '2026.3.5',
-    invoiceNumber: 'TAX-2026-0305-001',
-    amount: 816000,
-    status: '발행완료',
-  },
-  {
-    id: '2',
-    date: '2026.2.25',
-    invoiceNumber: 'TAX-2026-0225-002',
-    amount: 920000,
-    status: '발행완료',
-  },
+const mockTaxInvoices: TaxInvoice[] = [
+  { id: '1', invoice_number: 'TAX-2026-0305-001', amount: 816000, status: '발행완료', created_at: '2026-03-05T00:00:00' },
+  { id: '2', invoice_number: 'TAX-2026-0225-002', amount: 920000, status: '발행완료', created_at: '2026-02-25T00:00:00' },
 ];
 
-// Mock 입금 내역 데이터
-const mockPayments = [
-  {
-    id: '1',
-    date: '2026.3.4',
-    orderNumber: 'ORD-2026-0304-001',
-    amount: 816000,
-    method: '무통장입금',
-    status: '입금완료',
-  },
-  {
-    id: '2',
-    date: '2026.2.24',
-    orderNumber: 'ORD-2026-0224-002',
-    amount: 920000,
-    method: '무통장입금',
-    status: '입금완료',
-  },
+const mockPayments: Payment[] = [
+  { id: '1', order_number: 'ORD-2026-0304-001', amount: 816000, method: '무통장입금', status: '입금완료', created_at: '2026-03-04T00:00:00' },
+  { id: '2', order_number: 'ORD-2026-0224-002', amount: 920000, method: '무통장입금', status: '입금완료', created_at: '2026-02-24T00:00:00' },
 ];
+
+// ── 헬퍼 ────────────────────────────────────────────────
+const statusColor = (status: string) =>
+  ['배송중', '환불완료', '입금완료'].includes(status) ? 'text-[#059669]' : 'text-gray-600';
+
+const formatDate = (iso: string) => iso.slice(0, 10).replace(/-/g, '.');
 
 type MenuTab = 'orders' | 'statements' | 'cancellations' | 'cart' | 'taxInvoices' | 'payments';
 
 export function MyPage() {
   const [activeTab, setActiveTab] = useState<MenuTab>('orders');
   const [selectedYear, setSelectedYear] = useState('2026');
+
+  // 실제 데이터 state (API 성공 시 채워짐, 빈 배열이면 mock 사용)
+  const [orders, setOrders] = useState<(Order & { image?: string })[]>([]);
+  const [cancellations, setCancellations] = useState<(OrderCancellation & { image?: string })[]>([]);
+  const [cartItems, setCartItems] = useState<(CartItem & { image?: string })[]>([]);
+  const [taxInvoices, setTaxInvoices] = useState<TaxInvoice[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    Promise.allSettled([
+      fetchOrders(),
+      fetchCancellations(),
+      fetchCart(),
+      fetchTaxInvoices(),
+      fetchPayments(),
+    ]).then(([ord, can, cart, tax, pay]) => {
+      setOrders(ord.status === 'fulfilled' && ord.value.length > 0 ? ord.value : mockOrders);
+      setCancellations(can.status === 'fulfilled' && can.value.length > 0 ? can.value : mockCancellations);
+      setCartItems(cart.status === 'fulfilled' && cart.value.length > 0 ? cart.value : mockCartItems);
+      setTaxInvoices(tax.status === 'fulfilled' && tax.value.length > 0 ? tax.value : mockTaxInvoices);
+      setPayments(pay.status === 'fulfilled' && pay.value.length > 0 ? pay.value : mockPayments);
+      setLoaded(true);
+    });
+  }, []);
+
+  // 장바구니 수량 변경
+  const handleCartQty = async (id: string, delta: number) => {
+    const item = cartItems.find(i => i.id === id);
+    if (!item) return;
+    const newQty = Math.max(1, item.quantity + delta);
+    // mock 항목이면 로컬만 변경
+    if (id.length < 10) {
+      setCartItems(prev => prev.map(i => i.id === id ? { ...i, quantity: newQty } : i));
+      return;
+    }
+    try {
+      const updated = await updateCartItem(id, newQty);
+      setCartItems(prev => prev.map(i => i.id === id ? { ...i, ...updated } : i));
+    } catch {
+      setCartItems(prev => prev.map(i => i.id === id ? { ...i, quantity: newQty } : i));
+    }
+  };
+
+  // 장바구니 삭제
+  const handleCartDelete = async (id: string) => {
+    if (id.length >= 10) {
+      try { await deleteCartItem(id); } catch { /* ignore */ }
+    }
+    setCartItems(prev => prev.filter(i => i.id !== id));
+  };
+
+  // 연도 필터
+  const filterByYear = <T extends { created_at: string }>(items: T[]) =>
+    selectedYear === 'all' ? items : items.filter(i => i.created_at.startsWith(selectedYear));
 
   const years = ['2026', '2025', '2024', '2023', '2022', '2021'];
 
@@ -364,7 +326,7 @@ export function MyPage() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-[#191F28]">
-                    {selectedYear}.3.3 주문
+                    주문 내역
                   </h3>
                   <button className="text-sm text-[#059669] hover:text-[#047857] font-medium">
                     주문 상세보기 →
@@ -372,7 +334,7 @@ export function MyPage() {
                 </div>
 
                 {/* Order Cards */}
-                {mockOrders.map((order) => (
+                {filterByYear(orders).map((order) => (
                   <div
                     key={order.id}
                     className="border border-gray-200 rounded-[12px] p-6"
@@ -381,8 +343,8 @@ export function MyPage() {
                       {/* Product Image */}
                       <div className="w-20 h-20 bg-gray-100 rounded-[8px] overflow-hidden">
                         <img
-                          src={order.image}
-                          alt={order.productName}
+                          src={(order as { image?: string }).image ?? ''}
+                          alt={order.product_name}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -392,15 +354,15 @@ export function MyPage() {
                         <div className="flex items-start justify-between mb-2">
                           <div>
                             <span
-                              className={`inline-block text-sm font-semibold mb-1 ${order.statusColor}`}
+                              className={`inline-block text-sm font-semibold mb-1 ${statusColor(order.status)}`}
                             >
                               {order.status}
                             </span>
                             <h4 className="font-medium text-[#191F28]">
-                              {order.productName}
+                              {order.product_name}
                             </h4>
                             <p className="text-sm text-gray-500 mt-1">
-                              {order.quantity}개 | ₩
+                              {formatDate(order.created_at)} | {order.quantity}개 | ₩
                               {order.price.toLocaleString()}
                             </p>
                           </div>
@@ -444,7 +406,7 @@ export function MyPage() {
                   거래명세서를 확인하고 다운로드할 수 있습니다.
                 </p>
 
-                {mockOrders.map((order) => (
+                {filterByYear(orders).map((order) => (
                   <div
                     key={order.id}
                     className="border border-gray-200 rounded-[12px] p-5 hover:border-[#059669]/30 transition-colors"
@@ -454,10 +416,10 @@ export function MyPage() {
                         <FileText className="w-5 h-5 text-[#059669]" />
                         <div>
                           <h4 className="font-medium text-[#191F28] mb-1">
-                            {order.date} 거래명세서
+                            {formatDate(order.created_at)} 거래명세서
                           </h4>
                           <p className="text-sm text-gray-500">
-                            {order.productName} 외 {order.quantity}건
+                            {order.product_name} 외 {order.quantity}건
                           </p>
                         </div>
                       </div>
@@ -492,7 +454,7 @@ export function MyPage() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-[#191F28]">
-                    {selectedYear}.2.20 취소/반품/교환/환불
+                    취소/반품/교환/환불 내역
                   </h3>
                   <button className="text-sm text-[#059669] hover:text-[#047857] font-medium">
                     상세보기 →
@@ -500,7 +462,7 @@ export function MyPage() {
                 </div>
 
                 {/* Cancellation Cards */}
-                {mockCancellations.map((cancellation) => (
+                {filterByYear(cancellations).map((cancellation) => (
                   <div
                     key={cancellation.id}
                     className="border border-gray-200 rounded-[12px] p-6"
@@ -509,8 +471,8 @@ export function MyPage() {
                       {/* Product Image */}
                       <div className="w-20 h-20 bg-gray-100 rounded-[8px] overflow-hidden">
                         <img
-                          src={cancellation.image}
-                          alt={cancellation.productName}
+                          src={(cancellation as { image?: string }).image ?? ''}
+                          alt={cancellation.product_name}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -520,15 +482,15 @@ export function MyPage() {
                         <div className="flex items-start justify-between mb-2">
                           <div>
                             <span
-                              className={`inline-block text-sm font-semibold mb-1 ${cancellation.statusColor}`}
+                              className={`inline-block text-sm font-semibold mb-1 ${statusColor(cancellation.status)}`}
                             >
-                              {cancellation.status}
+                              [{cancellation.type}] {cancellation.status}
                             </span>
                             <h4 className="font-medium text-[#191F28]">
-                              {cancellation.productName}
+                              {cancellation.product_name}
                             </h4>
                             <p className="text-sm text-gray-500 mt-1">
-                              {cancellation.quantity}개 | ₩
+                              {formatDate(cancellation.created_at)} | {cancellation.quantity}개 | ₩
                               {cancellation.price.toLocaleString()}
                             </p>
                             <p className="text-sm text-gray-500 mt-1">
@@ -581,7 +543,7 @@ export function MyPage() {
                 </div>
 
                 {/* Cart Cards */}
-                {mockCartItems.map((item) => (
+                {cartItems.map((item) => (
                   <div
                     key={item.id}
                     className="border border-gray-200 rounded-[12px] p-6"
@@ -590,8 +552,8 @@ export function MyPage() {
                       {/* Product Image */}
                       <div className="w-20 h-20 bg-gray-100 rounded-[8px] overflow-hidden">
                         <img
-                          src={item.image}
-                          alt={item.productName}
+                          src={(item as { image?: string }).image ?? ''}
+                          alt={item.product_name}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -601,12 +563,35 @@ export function MyPage() {
                         <div className="flex items-start justify-between mb-2">
                           <div>
                             <h4 className="font-medium text-[#191F28]">
-                              {item.productName}
+                              {item.product_name}
                             </h4>
                             <p className="text-sm text-gray-500 mt-1">
-                              {item.quantity}개 | ₩
-                              {item.price.toLocaleString()}
+                              ₩{item.price.toLocaleString()}
                             </p>
+                          </div>
+
+                          {/* Quantity Controls */}
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-8 h-8 p-0 rounded-[6px]"
+                              onClick={() => handleCartQty(item.id, -1)}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </Button>
+                            <span className="w-8 text-center font-medium">{item.quantity}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-8 h-8 p-0 rounded-[6px]"
+                              onClick={() => handleCartQty(item.id, 1)}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                            <span className="ml-2 font-semibold text-[#191F28]">
+                              ₩{(item.price * item.quantity).toLocaleString()}
+                            </span>
                           </div>
                         </div>
 
@@ -614,25 +599,17 @@ export function MyPage() {
                         <div className="flex gap-2 mt-4">
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="border-gray-300 text-gray-700 hover:bg-gray-50 rounded-[8px]"
+                            className="bg-[#059669] hover:bg-[#047857] text-white rounded-[8px]"
                           >
-                            <Package className="w-4 h-4 mr-1" />
-                            배송 조회
+                            주문하기
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-gray-300 text-gray-700 hover:bg-gray-50 rounded-[8px]"
+                            className="border-red-300 text-red-600 hover:bg-red-50 rounded-[8px]"
+                            onClick={() => handleCartDelete(item.id)}
                           >
-                            교환·반품 신청
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-gray-300 text-gray-700 hover:bg-gray-50 rounded-[8px]"
-                          >
-                            리뷰 작성하기
+                            삭제
                           </Button>
                         </div>
                       </div>
@@ -648,7 +625,7 @@ export function MyPage() {
                   발행된 세금계산서를 확인하고 다운로드할 수 있습니다.
                 </p>
 
-                {mockTaxInvoices.map((invoice) => (
+                {filterByYear(taxInvoices).map((invoice) => (
                   <div
                     key={invoice.id}
                     className="border border-gray-200 rounded-[12px] p-5 hover:border-[#059669]/30 transition-colors"
@@ -658,10 +635,10 @@ export function MyPage() {
                         <CreditCard className="w-5 h-5 text-[#059669]" />
                         <div>
                           <h4 className="font-medium text-[#191F28] mb-1">
-                            {invoice.invoiceNumber}
+                            {invoice.invoice_number}
                           </h4>
                           <p className="text-sm text-gray-500">
-                            발행일: {invoice.date} | 상태:{' '}
+                            발행일: {formatDate(invoice.created_at)} | 상태:{' '}
                             <span className="text-[#059669] font-medium">
                               {invoice.status}
                             </span>
@@ -701,7 +678,7 @@ export function MyPage() {
                   입금 내역을 확인할 수 있습니다.
                 </p>
 
-                {mockPayments.map((payment) => (
+                {filterByYear(payments).map((payment) => (
                   <div
                     key={payment.id}
                     className="border border-gray-200 rounded-[12px] p-5 hover:border-[#059669]/30 transition-colors"
@@ -711,10 +688,10 @@ export function MyPage() {
                         <Wallet className="w-5 h-5 text-[#059669]" />
                         <div>
                           <h4 className="font-medium text-[#191F28] mb-1">
-                            주문번호: {payment.orderNumber}
+                            주문번호: {payment.order_number}
                           </h4>
                           <p className="text-sm text-gray-500">
-                            입금일: {payment.date} | 결제수단: {payment.method} |
+                            입금일: {formatDate(payment.created_at)} | 결제수단: {payment.method} |
                             상태:{' '}
                             <span className="text-[#059669] font-medium">
                               {payment.status}

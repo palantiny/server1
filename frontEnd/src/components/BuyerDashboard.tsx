@@ -93,6 +93,7 @@ export function BuyerDashboard() {
     efficacy: true,
     origin: true,
   });
+  const [sortBy, setSortBy] = useState('default');
   const [herbs, setHerbs] = useState<HerbItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,33 +128,74 @@ export function BuyerDashboard() {
     );
   };
 
-  // 카테고리별 필터링
-  const filteredProducts = herbs.filter((herb) => {
-    // 검색어 필터
-    const matchesSearch = herb.name.toLowerCase().includes(searchTerm.toLowerCase());
+  // 형상별/부위 키워드 매핑
+  const formKeywords: Record<string, string[]> = {
+    root: ['뿌리', '근'],
+    bark: ['껍질', '피', '수피', '피부'],
+    fruit: ['열매', '과실', '씨', '종자', '자'],
+    flower: ['꽃', '화', '花'],
+    leaf: ['잎', '엽', '葉'],
+    whole: ['전초', '줄기', '경', '초'],
+  };
 
-    // 한글 자음 필터
-    let matchesInitial = true;
-    if (selectedInitial !== 'all') {
-      const category = initialCategories.find(c => c.id === selectedInitial);
-      if (category && category.initial) {
-        const herbInitial = getInitial(herb.name[0]);
-        matchesInitial = category.initial.includes(herbInitial);
+  // 효능 키워드 매핑
+  const efficacyKeywords: Record<string, string[]> = {
+    'tonify-qi': ['보기', '기운', '보익', '익기'],
+    'tonify-blood': ['보혈', '혈액', '양혈'],
+    'tonify-yin': ['보음', '음기', '자음'],
+    'tonify-yang': ['보양', '양기', '온양'],
+    'clear-heat': ['청열', '열내림', '해열', '열'],
+    'dispel-wind': ['거풍', '풍', '진통'],
+  };
+
+  // 카테고리별 필터링 + 정렬
+  const filteredProducts = herbs
+    .filter((herb) => {
+      // 검색어 필터
+      const matchesSearch = herb.name.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // 한글 자음 필터
+      let matchesInitial = true;
+      if (selectedInitial !== 'all') {
+        const category = initialCategories.find(c => c.id === selectedInitial);
+        if (category && category.initial) {
+          const herbInitial = getInitial(herb.name[0]);
+          matchesInitial = category.initial.includes(herbInitial);
+        }
       }
-    }
 
-    // 가격 범위 필터
-    const matchesPrice = herb.price >= priceRange[0] && herb.price <= priceRange[1];
+      // 가격 범위 필터
+      const matchesPrice = herb.price >= priceRange[0] && herb.price <= priceRange[1];
 
-    // 원산지 필터 (체크박스)
-    const originCountry = getOriginCountry(herb.origin);
-    const matchesOrigin = selectedOrigins.length === 0 ||
-      (selectedOrigins.includes('domestic') && originCountry === '대한민국') ||
-      (selectedOrigins.includes('china') && originCountry === '중국') ||
-      (selectedOrigins.includes('vietnam') && originCountry === '베트남');
+      // 원산지 필터
+      const originCountry = getOriginCountry(herb.origin);
+      const matchesOrigin = selectedOrigins.length === 0 ||
+        (selectedOrigins.includes('domestic') && originCountry === '대한민국') ||
+        (selectedOrigins.includes('china') && originCountry === '중국') ||
+        (selectedOrigins.includes('vietnam') && originCountry === '베트남');
 
-    return matchesSearch && matchesInitial && matchesPrice && matchesOrigin;
-  });
+      // 형상별/부위 필터
+      const matchesForm = selectedForms.length === 0 || selectedForms.some((formId) => {
+        const keywords = formKeywords[formId] ?? [];
+        const haystack = `${herb.property} ${herb.description} ${herb.feature}`;
+        return keywords.some(kw => haystack.includes(kw));
+      });
+
+      // 효능 필터
+      const matchesEfficacy = selectedEfficacies.length === 0 || selectedEfficacies.some((effId) => {
+        const keywords = efficacyKeywords[effId] ?? [];
+        const haystack = `${herb.feature} ${herb.description}`;
+        return keywords.some(kw => haystack.includes(kw));
+      });
+
+      return matchesSearch && matchesInitial && matchesPrice && matchesOrigin && matchesForm && matchesEfficacy;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'price-asc') return a.price - b.price;
+      if (sortBy === 'price-desc') return b.price - a.price;
+      if (sortBy === 'name') return a.name.localeCompare(b.name, 'ko');
+      return 0;
+    });
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
@@ -446,12 +488,15 @@ export function BuyerDashboard() {
 
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Sort by:</span>
-                <select className="h-10 px-3 border border-gray-300 rounded-[8px] text-sm bg-white text-gray-700">
-                  <option>가격순</option>
-                  <option>최신순</option>
-                  <option>가격 낮은순</option>
-                  <option>가격 높은순</option>
-                  <option>인기순</option>
+                <select
+                  className="h-10 px-3 border border-gray-300 rounded-[8px] text-sm bg-white text-gray-700"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <option value="default">기본순</option>
+                  <option value="name">이름순</option>
+                  <option value="price-asc">가격 낮은순</option>
+                  <option value="price-desc">가격 높은순</option>
                 </select>
                 <select className="h-10 px-3 border border-gray-300 rounded-[8px] text-sm bg-white text-gray-700">
                   <option>모두</option>

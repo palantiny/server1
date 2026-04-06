@@ -94,3 +94,110 @@ export async function fetchHerbDetail(id: string): Promise<HerbDetail> {
   if (!res.ok) throw new Error("약재 상세 정보를 불러오는데 실패했습니다.");
   return res.json();
 }
+
+// ── MyPage 타입 ──────────────────────────────────────────
+
+export interface Order {
+  id: string;
+  product_name: string;
+  price: number;
+  quantity: number;
+  status: string;
+  created_at: string;
+}
+
+export interface OrderCancellation {
+  id: string;
+  type: string;
+  product_name: string;
+  price: number;
+  quantity: number;
+  status: string;
+  reason: string;
+  created_at: string;
+}
+
+export interface CartItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  price: number;
+  quantity: number;
+}
+
+export interface TaxInvoice {
+  id: string;
+  invoice_number: string;
+  amount: number;
+  status: string;
+  created_at: string;
+}
+
+export interface Payment {
+  id: string;
+  order_number: string;
+  amount: number;
+  method: string;
+  status: string;
+  created_at: string;
+}
+
+// ── MyPage API ───────────────────────────────────────────
+
+export async function fetchOrders(): Promise<Order[]> {
+  const res = await fetch(`${API_BASE}/orders`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("주문 목록을 불러오는데 실패했습니다.");
+  return res.json();
+}
+
+export async function fetchCancellations(): Promise<OrderCancellation[]> {
+  const res = await fetch(`${API_BASE}/orders/cancellations`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("취소/반품 내역을 불러오는데 실패했습니다.");
+  return res.json();
+}
+
+export async function fetchCart(): Promise<CartItem[]> {
+  const res = await fetch(`${API_BASE}/cart`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("장바구니를 불러오는데 실패했습니다.");
+  return res.json();
+}
+
+export async function addToCart(item: Omit<CartItem, "id">): Promise<CartItem> {
+  const res = await fetch(`${API_BASE}/cart`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(item),
+  });
+  if (!res.ok) throw new Error("장바구니 추가에 실패했습니다.");
+  return res.json();
+}
+
+export async function updateCartItem(id: string, quantity: number): Promise<CartItem> {
+  const res = await fetch(`${API_BASE}/cart/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ quantity }),
+  });
+  if (!res.ok) throw new Error("장바구니 수정에 실패했습니다.");
+  return res.json();
+}
+
+export async function deleteCartItem(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/cart/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("장바구니 삭제에 실패했습니다.");
+}
+
+export async function fetchTaxInvoices(): Promise<TaxInvoice[]> {
+  const res = await fetch(`${API_BASE}/invoices/tax`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("세금계산서를 불러오는데 실패했습니다.");
+  return res.json();
+}
+
+export async function fetchPayments(): Promise<Payment[]> {
+  const res = await fetch(`${API_BASE}/invoices/payments`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("입금 내역을 불러오는데 실패했습니다.");
+  return res.json();
+}
