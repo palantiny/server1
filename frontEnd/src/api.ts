@@ -83,14 +83,24 @@ function authHeaders(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/** 401 응답 시 토큰 삭제 후 로그인 페이지로 이동 */
+function handle401(res: Response): void {
+  if (res.status === 401) {
+    clearToken();
+    window.location.replace('/login');
+  }
+}
+
 export async function fetchHerbs(): Promise<{ herbs: HerbItem[]; total: number }> {
   const res = await fetch(`${API_BASE}/herbs`, { headers: authHeaders() });
+  handle401(res);
   if (!res.ok) throw new Error("약재 목록을 불러오는데 실패했습니다.");
   return res.json();
 }
 
 export async function fetchHerbDetail(id: string): Promise<HerbDetail> {
   const res = await fetch(`${API_BASE}/herbs/${id}`, { headers: authHeaders() });
+  handle401(res);
   if (!res.ok) throw new Error("약재 상세 정보를 불러오는데 실패했습니다.");
   return res.json();
 }
@@ -146,18 +156,21 @@ export interface Payment {
 
 export async function fetchOrders(): Promise<Order[]> {
   const res = await fetch(`${API_BASE}/orders`, { headers: authHeaders() });
+  handle401(res);
   if (!res.ok) throw new Error("주문 목록을 불러오는데 실패했습니다.");
   return res.json();
 }
 
 export async function fetchCancellations(): Promise<OrderCancellation[]> {
   const res = await fetch(`${API_BASE}/orders/cancellations`, { headers: authHeaders() });
+  handle401(res);
   if (!res.ok) throw new Error("취소/반품 내역을 불러오는데 실패했습니다.");
   return res.json();
 }
 
 export async function fetchCart(): Promise<CartItem[]> {
   const res = await fetch(`${API_BASE}/cart`, { headers: authHeaders() });
+  handle401(res);
   if (!res.ok) throw new Error("장바구니를 불러오는데 실패했습니다.");
   return res.json();
 }
@@ -168,6 +181,7 @@ export async function addToCart(item: Omit<CartItem, "id">): Promise<CartItem> {
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(item),
   });
+  handle401(res);
   if (!res.ok) throw new Error("장바구니 추가에 실패했습니다.");
   return res.json();
 }
@@ -178,6 +192,7 @@ export async function updateCartItem(id: string, quantity: number): Promise<Cart
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ quantity }),
   });
+  handle401(res);
   if (!res.ok) throw new Error("장바구니 수정에 실패했습니다.");
   return res.json();
 }
@@ -187,17 +202,20 @@ export async function deleteCartItem(id: string): Promise<void> {
     method: "DELETE",
     headers: authHeaders(),
   });
+  handle401(res);
   if (!res.ok) throw new Error("장바구니 삭제에 실패했습니다.");
 }
 
 export async function fetchTaxInvoices(): Promise<TaxInvoice[]> {
   const res = await fetch(`${API_BASE}/invoices/tax`, { headers: authHeaders() });
+  handle401(res);
   if (!res.ok) throw new Error("세금계산서를 불러오는데 실패했습니다.");
   return res.json();
 }
 
 export async function fetchPayments(): Promise<Payment[]> {
   const res = await fetch(`${API_BASE}/invoices/payments`, { headers: authHeaders() });
+  handle401(res);
   if (!res.ok) throw new Error("입금 내역을 불러오는데 실패했습니다.");
   return res.json();
 }

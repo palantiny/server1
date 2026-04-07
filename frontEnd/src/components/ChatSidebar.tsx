@@ -248,23 +248,23 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                     </div>
                   )}
                   <div
-                    className={`rounded-[12px] px-3 py-2.5 shadow-sm text-sm max-w-[85%] ${
+                    className={`rounded-[12px] px-3 py-2.5 shadow-sm max-w-[85%] ${
                       msg.role === 'user'
-                        ? 'bg-[#059669] text-white whitespace-pre-wrap'
+                        ? 'bg-[#059669] text-white whitespace-pre-wrap text-base leading-relaxed'
                         : msg.isError
-                          ? 'bg-red-50 text-red-600 border border-red-200 whitespace-pre-wrap'
+                          ? 'bg-red-50 text-red-600 border border-red-200 whitespace-pre-wrap text-base'
                           : 'bg-white text-gray-700'
                     }`}
                   >
                     {msg.role === 'assistant' && !msg.isError ? (
                       msg.content === '' ? (
                         <div className="flex space-x-1.5 h-5 items-center px-1">
-                          <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                         </div>
                       ) : (
-                        <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:mb-2 [&_a]:underline [&_table]:w-full [&_table]:my-2 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-1.5 [&_th]:text-left [&_th]:text-xs [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-1.5 [&_td]:text-xs [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-50 [&_tbody>tr]:transition-colors break-words overflow-x-auto text-sm">
+                        <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_p]:text-base [&_p]:leading-relaxed [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mb-2 [&_ul]:text-base [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:mb-2 [&_ol]:text-base [&_li]:text-base [&_li]:leading-relaxed [&_a]:underline [&_table]:w-full [&_table]:my-2 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-2 [&_th]:text-left [&_th]:text-sm [&_th]:font-semibold [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_td]:text-sm [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-50 [&_tbody>tr]:transition-colors break-words overflow-x-auto text-base leading-relaxed">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             rehypePlugins={[rehypeRaw]}
@@ -275,7 +275,7 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                                     <button
                                       data-product="true"
                                       onClick={(e) => { e.stopPropagation(); navigate(href); }}
-                                      className="text-left bg-transparent border-none text-[#059669] hover:text-[#047857] hover:underline cursor-pointer transition-colors p-0 m-0 font-semibold text-sm"
+                                      className="text-left bg-transparent border-none text-[#059669] hover:text-[#047857] hover:underline cursor-pointer transition-colors p-0 m-0 font-semibold text-base"
                                     >
                                       {children}
                                     </button>
@@ -345,7 +345,7 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                     }
                   }}
                   disabled={isStreaming}
-                  className="flex-1 min-h-[40px] max-h-[100px] text-sm rounded-[8px] border border-gray-300 px-3 py-2 resize-none overflow-y-auto focus:outline-none focus:ring-2 focus:ring-[#059669]/30 focus:border-[#059669] disabled:opacity-50 leading-relaxed"
+                  className="flex-1 min-h-[44px] max-h-[110px] text-base rounded-[8px] border border-gray-300 px-3 py-2.5 resize-none overflow-y-auto focus:outline-none focus:ring-2 focus:ring-[#059669]/30 focus:border-[#059669] disabled:opacity-50 leading-relaxed"
                 />
                 <button
                   onClick={() => handleSendMessage()}
