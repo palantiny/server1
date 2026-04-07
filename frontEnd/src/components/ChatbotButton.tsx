@@ -5,7 +5,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -373,23 +372,30 @@ export function ChatbotButton() {
 
           {/* Chatbot Input Area */}
           <div className="p-4 border-t border-gray-200 bg-white rounded-b-[12px]">
-            <div className="flex gap-2">
-              <Input
+            <div className="flex gap-2 items-end">
+              <textarea
                 placeholder="메시지를 입력하세요..."
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
+                rows={1}
+                onChange={(e) => {
+                  setMessage(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
                     handleSendMessage();
+                    e.currentTarget.style.height = 'auto';
                   }
                 }}
                 disabled={isStreaming}
-                className="flex-1 h-12 text-base rounded-[8px] border-gray-300"
+                className="flex-1 min-h-[48px] max-h-[120px] text-base rounded-[8px] border border-gray-300 px-3 py-3 resize-none overflow-y-auto focus:outline-none focus:ring-2 focus:ring-[#059669]/30 focus:border-[#059669] disabled:opacity-50 disabled:cursor-not-allowed leading-relaxed"
               />
               <Button
                 onClick={() => handleSendMessage()}
                 disabled={!message.trim() || isStreaming}
-                className={`h-12 px-5 rounded-[8px] transition-colors ${message.trim() && !isStreaming
+                className={`h-12 px-5 rounded-[8px] transition-colors flex-shrink-0 ${message.trim() && !isStreaming
                     ? 'bg-[#059669] hover:bg-[#047857] text-white'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
