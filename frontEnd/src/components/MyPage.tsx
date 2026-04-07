@@ -18,7 +18,6 @@ import {
   Plus,
   Minus,
 } from 'lucide-react';
-import { ChatbotButton } from './ChatbotButton';
 import {
   fetchOrders, fetchCancellations, fetchCart, fetchTaxInvoices, fetchPayments,
   updateCartItem, deleteCartItem,
@@ -218,7 +217,6 @@ export function MyPage() {
                 </span>
               </Button>
               <LogoutButton />
-              <ChatbotButton />
             </div>
           </div>
         </div>

@@ -2,7 +2,6 @@ import { Link } from 'react-router';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ArrowLeft, ShoppingCart, Heart, User, Bell, Search, FileText, Plus, Minus, Package, ChevronRight, Truck, CheckCircle2, Loader2, Leaf } from 'lucide-react';
-import { ChatbotButton } from './ChatbotButton';
 import { LogoutButton } from './LogoutButton';
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
@@ -451,7 +450,6 @@ export function ProductDetail() {
         </div>
       </div>
 
-      <ChatbotButton />
     </div>
   );
 }

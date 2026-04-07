@@ -4,7 +4,6 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Link } from 'react-router';
 import { useState, useEffect, useMemo } from 'react';
-import { ChatbotButton } from './ChatbotButton';
 import { LogoutButton } from './LogoutButton';
 import { fetchHerbs, type HerbItem } from '../api';
 import { useCartCount } from '../hooks/useCartCount';
@@ -568,8 +567,6 @@ export function BuyerDashboard() {
         </div>
       </div>
 
-      {/* Chatbot Floating Button */}
-      <ChatbotButton />
     </div>
   );
 }
