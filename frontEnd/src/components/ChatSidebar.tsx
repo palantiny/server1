@@ -330,7 +330,7 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
               <div className="flex gap-2 items-end">
                 <textarea
                   ref={textareaRef}
-                  placeholder="메시지를 입력하세요... (Shift+Enter: 줄바꿈)"
+                  placeholder="메시지를 입력하세요..."
                   value={message}
                   rows={1}
                   onChange={(e) => {
