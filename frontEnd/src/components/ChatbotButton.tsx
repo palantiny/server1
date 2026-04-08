@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { MessageCircle, X, Send, RotateCcw } from 'lucide-react';
+import { MessageCircle, X, Send, RotateCcw, ChevronDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -9,7 +9,28 @@ import { Button } from './ui/button';
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  thinking?: string;
   isError?: boolean;
+}
+
+function ThinkingBox({ thinking }: { thinking: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-2">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-500 transition-colors"
+      >
+        <ChevronDown className={`w-3 h-3 transition-transform ${open ? '' : '-rotate-90'}`} />
+        <span>생각 과정 보기</span>
+      </button>
+      {open && (
+        <div className="mt-1 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-[6px] text-xs text-gray-400 leading-relaxed whitespace-pre-wrap">
+          {thinking}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const SESSION_KEY = 'palantiny_session_id';
@@ -198,6 +219,12 @@ export function ChatbotButton() {
                 });
               } else if (data.type === 'status') {
                 setStatusText(data.content);
+              } else if (data.type === 'thinking' && data.content) {
+                setMessages((prev: ChatMessage[]) => {
+                  const newArr = [...prev];
+                  newArr[newArr.length - 1].thinking = data.content;
+                  return newArr;
+                });
               } else if (data.type === 'token' && data.content) {
                 setStatusText('');
                 setMessages((prev: ChatMessage[]) => {
@@ -307,6 +334,7 @@ export function ChatbotButton() {
                         </div>
                       ) : (
                         <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_a]:underline [&_table]:w-full [&_table]:my-3 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-2 [&_th]:text-left [&_th]:text-base [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_td]:text-base [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-100 [&_tbody>tr]:transition-colors break-words overflow-x-auto">
+                          {msg.thinking && <ThinkingBox thinking={msg.thinking} />}
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             rehypePlugins={[rehypeRaw]}
