@@ -12,6 +12,28 @@ interface ChatMessage {
   isError?: boolean;
 }
 
+function TypewriterThinking({ thinking, statusText }: { thinking?: string; statusText: string }) {
+  const [displayed, setDisplayed] = useState(0);
+
+  useEffect(() => { setDisplayed(0); }, [thinking]);
+
+  useEffect(() => {
+    if (!thinking || displayed >= thinking.length) return;
+    const timer = setTimeout(() => setDisplayed(d => d + 1), 18);
+    return () => clearTimeout(timer);
+  }, [displayed, thinking]);
+
+  if (!thinking) {
+    return <span className="text-xs text-gray-400 italic">{statusText || '생각 중...'}</span>;
+  }
+  return (
+    <p className="text-xs text-gray-400 leading-relaxed whitespace-pre-wrap">
+      {thinking.slice(0, displayed)}
+      {displayed < thinking.length && <span className="opacity-70">▌</span>}
+    </p>
+  );
+}
+
 function ThinkingBox({ thinking }: { thinking: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -290,15 +312,8 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                   >
                     {msg.role === 'assistant' && !msg.isError ? (
                       msg.content === '' ? (
-                        <div className="flex items-center gap-2 py-0.5">
-                          <div className="flex space-x-1 items-center flex-shrink-0">
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                          </div>
-                          {statusText && (
-                            <span className="text-xs text-gray-400 leading-none">{statusText}</span>
-                          )}
+                        <div className="py-0.5">
+                          <TypewriterThinking thinking={msg.thinking} statusText={statusText} />
                         </div>
                       ) : (
                         <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_p]:text-base [&_p]:leading-relaxed [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mb-2 [&_ul]:text-base [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:mb-2 [&_ol]:text-base [&_li]:text-base [&_li]:leading-relaxed [&_a]:underline [&_table]:w-full [&_table]:my-2 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-2 [&_th]:text-left [&_th]:text-sm [&_th]:font-semibold [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_td]:text-sm [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-50 [&_tbody>tr]:transition-colors break-words overflow-x-auto text-base leading-relaxed">
