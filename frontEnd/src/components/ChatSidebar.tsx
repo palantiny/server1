@@ -48,6 +48,7 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
   });
 
   const [isStreaming, setIsStreaming] = useState(false);
+  const [statusText, setStatusText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -119,6 +120,7 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
 
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsStreaming(true);
+    setStatusText('답변 준비 중...');
 
     const abortController = new AbortController();
     try {
@@ -160,7 +162,10 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                   arr[arr.length - 1].isError = true;
                   return arr;
                 });
+              } else if (data.type === 'status') {
+                setStatusText(data.content);
               } else if (data.type === 'token' && data.content) {
+                setStatusText('');
                 setMessages(prev => {
                   const arr = [...prev];
                   arr[arr.length - 1].content += data.content;
@@ -178,6 +183,7 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
       ]);
     } finally {
       setIsStreaming(false);
+      setStatusText('');
       abortController.abort();
     }
   };
@@ -189,7 +195,7 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
         onClick={onToggle}
         className={`fixed top-1/2 -translate-y-1/2 z-40 flex items-center justify-center bg-[#059669] hover:bg-[#047857] text-white shadow-lg transition-all duration-300 ${
           isOpen
-            ? 'right-[380px] w-8 h-16 rounded-l-[8px]'
+            ? 'right-[650px] w-8 h-16 rounded-l-[8px]'
             : 'right-0 w-10 h-20 rounded-l-[10px]'
         }`}
         aria-label={isOpen ? '채팅 닫기' : '채팅 열기'}
@@ -205,7 +211,7 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
       {/* Sidebar Panel */}
       <div
         className={`fixed top-0 right-0 h-full bg-white border-l border-gray-200 shadow-xl z-30 flex flex-col transition-all duration-300 ${
-          isOpen ? 'w-[380px]' : 'w-0 overflow-hidden'
+          isOpen ? 'w-[650px]' : 'w-0 overflow-hidden'
         }`}
       >
         {isOpen && (
@@ -258,10 +264,15 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                   >
                     {msg.role === 'assistant' && !msg.isError ? (
                       msg.content === '' ? (
-                        <div className="flex space-x-1.5 h-5 items-center px-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div className="flex items-center gap-2 py-0.5">
+                          <div className="flex space-x-1 items-center flex-shrink-0">
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                          {statusText && (
+                            <span className="text-xs text-gray-400 leading-none">{statusText}</span>
+                          )}
                         </div>
                       ) : (
                         <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_p]:text-base [&_p]:leading-relaxed [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mb-2 [&_ul]:text-base [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:mb-2 [&_ol]:text-base [&_li]:text-base [&_li]:leading-relaxed [&_a]:underline [&_table]:w-full [&_table]:my-2 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-2 [&_th]:text-left [&_th]:text-sm [&_th]:font-semibold [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_td]:text-sm [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-50 [&_tbody>tr]:transition-colors break-words overflow-x-auto text-base leading-relaxed">
