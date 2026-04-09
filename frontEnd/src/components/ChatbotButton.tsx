@@ -13,25 +13,17 @@ interface ChatMessage {
   isError?: boolean;
 }
 
-function TypewriterThinking({ thinking, statusText }: { thinking?: string; statusText: string }) {
-  const [displayed, setDisplayed] = useState(0);
-
-  useEffect(() => { setDisplayed(0); }, [thinking]);
-
-  useEffect(() => {
-    if (!thinking || displayed >= thinking.length) return;
-    const timer = setTimeout(() => setDisplayed(d => d + 1), 18);
-    return () => clearTimeout(timer);
-  }, [displayed, thinking]);
-
-  if (!thinking) {
-    return <span className="text-xs text-gray-400 italic">{statusText || '생각 중...'}</span>;
-  }
+function ThinkingLastLine({ thinking }: { thinking?: string }) {
+  const lastLine = (() => {
+    if (!thinking) return '';
+    const lines = thinking.split('\n').filter(l => l.trim());
+    return lines[lines.length - 1] || '';
+  })();
   return (
-    <p className="text-xs text-gray-400 leading-relaxed whitespace-pre-wrap">
-      {thinking.slice(0, displayed)}
-      {displayed < thinking.length && <span className="opacity-70">▌</span>}
-    </p>
+    <span className="text-xs text-gray-400 italic">
+      {lastLine || '생각 중...'}
+      <span className="opacity-70">▌</span>
+    </span>
   );
 }
 
@@ -91,7 +83,6 @@ export function ChatbotButton() {
   });
 
   const [isStreaming, setIsStreaming] = useState(false);
-  const [statusText, setStatusText] = useState('');
 
   // Sync messages to sessionStorage automatically whenever they change
   useEffect(() => {
@@ -177,7 +168,6 @@ export function ChatbotButton() {
 
     setMessages((prev: ChatMessage[]) => [...prev, { role: 'user', content: userMessage }]);
     setIsStreaming(true);
-    setStatusText('답변 준비 중...');
 
     const abortController = new AbortController();
 
@@ -239,19 +229,32 @@ export function ChatbotButton() {
                   newArr[newArr.length - 1].isError = true;
                   return newArr;
                 });
-              } else if (data.type === 'status') {
-                setStatusText(data.content);
-              } else if (data.type === 'thinking' && data.content) {
+              } else if (data.type === 'thinking_token' && data.content) {
                 setMessages((prev: ChatMessage[]) => {
                   const newArr = [...prev];
-                  newArr[newArr.length - 1].thinking = data.content;
+                  newArr[newArr.length - 1] = {
+                    ...newArr[newArr.length - 1],
+                    thinking: (newArr[newArr.length - 1].thinking || '') + data.content,
+                  };
+                  return newArr;
+                });
+              } else if (data.type === 'thinking' && data.content) {
+                // 하위 호환: 전체 교체
+                setMessages((prev: ChatMessage[]) => {
+                  const newArr = [...prev];
+                  newArr[newArr.length - 1] = { ...newArr[newArr.length - 1], thinking: data.content };
                   return newArr;
                 });
               } else if (data.type === 'token' && data.content) {
-                setStatusText('');
                 setMessages((prev: ChatMessage[]) => {
                   const newArr = [...prev];
                   newArr[newArr.length - 1].content += data.content;
+                  return newArr;
+                });
+              } else if (data.type === 'correction' && data.content) {
+                setMessages((prev: ChatMessage[]) => {
+                  const newArr = [...prev];
+                  newArr[newArr.length - 1].content = data.content;
                   return newArr;
                 });
               }
@@ -269,7 +272,6 @@ export function ChatbotButton() {
       ]);
     } finally {
       setIsStreaming(false);
-      setStatusText('');
       abortController.abort(); // Cleanup connection
     }
   };
@@ -345,7 +347,7 @@ export function ChatbotButton() {
                     {msg.role === 'assistant' && !msg.isError ? (
                       msg.content === '' ? (
                         <div className="py-0.5">
-                          <TypewriterThinking thinking={msg.thinking} statusText={statusText} />
+                          <ThinkingLastLine thinking={msg.thinking} />
                         </div>
                       ) : (
                         <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_a]:underline [&_table]:w-full [&_table]:my-3 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-2 [&_th]:text-left [&_th]:text-base [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_td]:text-base [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-100 [&_tbody>tr]:transition-colors break-words overflow-x-auto">
