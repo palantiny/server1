@@ -542,7 +542,7 @@ export function BuyerDashboard() {
 
             {/* Product Grid - 챗봇 열리면 3열, 닫히면 4열 */}
             {!loading && !error && (
-              <div className={`grid gap-4 ${isChatOpen ? 'grid-cols-3' : 'grid-cols-4'}`}>
+              <div className={`grid gap-4 ${isChatOpen ? 'grid-cols-4' : 'grid-cols-5'}`}>
                 {filteredProducts.map((herb) => (
                   <ProductCard
                     key={herb.id}

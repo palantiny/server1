@@ -27,6 +27,71 @@ function ThinkingLastLine({ thinking }: { thinking?: string }) {
   );
 }
 
+interface HerbCardProps {
+  name: string;
+  pid?: string;
+  grade?: string;
+  price?: string;
+  month?: string;
+  pack?: string;
+  box?: string;
+  maker?: string;
+}
+
+function HerbCard({ name, pid, grade, price, month, pack, box, maker }: HerbCardProps) {
+  const navigate = useNavigate();
+  const clickable = !!pid;
+  const formattedPrice = price ? Number(price).toLocaleString('ko-KR') : null;
+
+  return (
+    <div
+      onClick={() => clickable && navigate(`/product/${pid}`)}
+      className={`my-1.5 rounded-xl border border-gray-200 bg-white overflow-hidden transition-all ${
+        clickable ? 'cursor-pointer hover:border-[#059669]/50 hover:shadow-md' : ''
+      }`}
+    >
+      {/* Header */}
+      <div className="bg-[#059669]/[0.06] px-3 py-2 flex items-center justify-between">
+        <span className="font-semibold text-gray-800 text-sm">{name || '약재명 없음'}</span>
+        {grade && (
+          <span className="text-xs bg-[#059669]/10 text-[#059669] rounded-full px-2 py-0.5 font-medium">
+            {grade}
+          </span>
+        )}
+      </div>
+      {/* Body */}
+      <div className="px-3 py-2 space-y-1">
+        {formattedPrice ? (
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-base font-bold text-[#059669]">{formattedPrice}원</span>
+            <span className="text-xs text-gray-400">/ 근</span>
+            {month && <span className="text-xs text-gray-400 ml-1">({month})</span>}
+          </div>
+        ) : (
+          <div className="text-xs text-gray-400 italic">가격정보없음</div>
+        )}
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+          {pack && (
+            <span className="text-xs text-gray-500">
+              <span className="text-gray-400">포장</span> {pack}
+            </span>
+          )}
+          {box && (
+            <span className="text-xs text-gray-500">
+              <span className="text-gray-400">박스</span> {box}개
+            </span>
+          )}
+          {maker && (
+            <span className="text-xs text-gray-500">
+              <span className="text-gray-400">제약사</span> {maker}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ThinkingBox({ thinking }: { thinking: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -83,6 +148,7 @@ export function ChatbotButton() {
   });
 
   const [isStreaming, setIsStreaming] = useState(false);
+  const [showAllCardsMap, setShowAllCardsMap] = useState<Record<number, boolean>>({});
 
   // Sync messages to sessionStorage automatically whenever they change
   useEffect(() => {
@@ -352,44 +418,86 @@ export function ChatbotButton() {
                       ) : (
                         <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_a]:underline [&_table]:w-full [&_table]:my-3 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-2 [&_th]:text-left [&_th]:text-base [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_td]:text-base [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-100 [&_tbody>tr]:transition-colors break-words overflow-x-auto">
                           {msg.thinking && <ThinkingBox thinking={msg.thinking} />}
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeRaw]}
-                            components={{
-                              a: ({ node, href, children, ...props }) => {
-                                if (href?.startsWith('/product/')) {
-                                  return (
-                                    <button
-                                      data-product="true"
-                                      onClick={(e) => { e.stopPropagation(); navigate(href); }}
-                                      className="text-left bg-transparent border-none text-[#059669] hover:text-[#047857] hover:underline cursor-pointer transition-colors p-0 m-0 font-semibold"
-                                    >
-                                      {children}
-                                    </button>
-                                  );
-                                }
-                                return <a href={href} className="text-[#059669] hover:underline" {...props}>{children}</a>;
-                              },
-                              tr: (props) => {
-                                return (
-                                  <tr
-                                    {...props}
-                                    onClick={(e) => {
-                                      if (e.currentTarget.querySelector('th')) return; // Ignore header rows
-                                      const btn = e.currentTarget.querySelector('[data-product="true"]');
-                                      if (btn) {
-                                        (btn as HTMLButtonElement).click();
+                          {(() => {
+                            const totalCards = (msg.content.match(/```herb-card/g) || []).length;
+                            const showAll = showAllCardsMap[idx] ?? false;
+                            const CARD_LIMIT = 5;
+                            let cardCount = 0;
+                            return (
+                              <>
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  rehypePlugins={[rehypeRaw]}
+                                  components={{
+                                    code: ({ className, children }) => {
+                                      if (className === 'language-herb-card') {
+                                        cardCount++;
+                                        if (!showAll && cardCount > CARD_LIMIT) return null;
+                                        const data: Record<string, string> = {};
+                                        String(children).trim().split('\n').forEach(line => {
+                                          const i = line.indexOf(':');
+                                          if (i > -1) {
+                                            const k = line.slice(0, i).trim();
+                                            const v = line.slice(i + 1).trim();
+                                            if (k) data[k] = v;
+                                          }
+                                        });
+                                        return (
+                                          <HerbCard
+                                            name={data['약재명'] || ''}
+                                            pid={data['product_id']}
+                                            grade={data['구분']}
+                                            price={data['근당가격']}
+                                            month={data['기준월']}
+                                            pack={data['포장단위']}
+                                            box={data['박스수량']}
+                                            maker={data['제약사']}
+                                          />
+                                        );
                                       }
-                                    }}
+                                      return <code className={className}>{children}</code>;
+                                    },
+                                    a: ({ node, href, children, ...props }) => {
+                                      if (href?.startsWith('/product/')) {
+                                        return (
+                                          <button
+                                            data-product="true"
+                                            onClick={(e) => { e.stopPropagation(); navigate(href); }}
+                                            className="text-left bg-transparent border-none text-[#059669] hover:text-[#047857] hover:underline cursor-pointer transition-colors p-0 m-0 font-semibold"
+                                          >
+                                            {children}
+                                          </button>
+                                        );
+                                      }
+                                      return <a href={href} className="text-[#059669] hover:underline" {...props}>{children}</a>;
+                                    },
+                                    tr: (props) => (
+                                      <tr
+                                        {...props}
+                                        onClick={(e) => {
+                                          if (e.currentTarget.querySelector('th')) return;
+                                          const btn = e.currentTarget.querySelector('[data-product="true"]');
+                                          if (btn) (btn as HTMLButtonElement).click();
+                                        }}
+                                      >
+                                        {props.children}
+                                      </tr>
+                                    ),
+                                  }}
+                                >
+                                  {msg.content}
+                                </ReactMarkdown>
+                                {totalCards > CARD_LIMIT && !showAll && (
+                                  <button
+                                    onClick={() => setShowAllCardsMap(prev => ({ ...prev, [idx]: true }))}
+                                    className="mt-1 w-full text-xs text-[#059669] hover:text-[#047857] border border-[#059669]/30 hover:border-[#059669]/60 rounded-lg py-1.5 transition-colors"
                                   >
-                                    {props.children}
-                                  </tr>
-                                );
-                              }
-                            }}
-                          >
-                            {msg.content}
-                          </ReactMarkdown>
+                                    나머지 {totalCards - CARD_LIMIT}개 더 보기
+                                  </button>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       )
                     ) : (

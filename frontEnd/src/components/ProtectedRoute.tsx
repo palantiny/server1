@@ -3,7 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router';
 import { getToken } from '../api';
 import { ChatSidebar } from './ChatSidebar';
 
-const SIDEBAR_WIDTH = 650;
+const SIDEBAR_WIDTH = 420;
 const STORAGE_KEY = 'palantiny_chat_open';
 
 interface ChatContextValue {
