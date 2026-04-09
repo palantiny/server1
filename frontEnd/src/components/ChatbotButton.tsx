@@ -38,8 +38,14 @@ interface HerbCardProps {
   maker?: string;
 }
 
+// 마크다운 링크 [텍스트](/경로) → 텍스트만 추출
+function stripMarkdownLink(text: string): string {
+  return text.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').trim();
+}
+
 function HerbCard({ name, pid, grade, price, month, pack, box, maker }: HerbCardProps) {
   const navigate = useNavigate();
+  const cleanName = stripMarkdownLink(name);
   const clickable = !!pid;
   const formattedPrice = price ? Number(price).toLocaleString('ko-KR') : null;
 
@@ -52,9 +58,9 @@ function HerbCard({ name, pid, grade, price, month, pack, box, maker }: HerbCard
     >
       {/* Header */}
       <div className="bg-[#059669]/[0.06] px-3 py-2 flex items-center justify-between">
-        <span className="font-semibold text-gray-800 text-sm">{name || '약재명 없음'}</span>
+        <span className="font-semibold text-gray-900 text-sm">{cleanName || '약재명 없음'}</span>
         {grade && (
-          <span className="text-xs bg-[#059669]/10 text-[#059669] rounded-full px-2 py-0.5 font-medium">
+          <span className="text-xs bg-[#059669]/10 text-[#059669] rounded-full px-2 py-0.5 font-semibold">
             {grade}
           </span>
         )}
@@ -64,26 +70,26 @@ function HerbCard({ name, pid, grade, price, month, pack, box, maker }: HerbCard
         {formattedPrice ? (
           <div className="flex items-baseline gap-1.5">
             <span className="text-base font-bold text-[#059669]">{formattedPrice}원</span>
-            <span className="text-xs text-gray-400">/ 근</span>
-            {month && <span className="text-xs text-gray-400 ml-1">({month})</span>}
+            <span className="text-xs text-gray-500">/ 근</span>
+            {month && <span className="text-xs text-gray-500 ml-1">({month})</span>}
           </div>
         ) : (
-          <div className="text-xs text-gray-400 italic">가격정보없음</div>
+          <div className="text-xs text-gray-500 italic">가격정보없음</div>
         )}
         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
           {pack && (
-            <span className="text-xs text-gray-500">
-              <span className="text-gray-400">포장</span> {pack}
+            <span className="text-xs text-gray-700">
+              <span className="text-gray-500">포장</span> {pack}
             </span>
           )}
           {box && (
-            <span className="text-xs text-gray-500">
-              <span className="text-gray-400">박스</span> {box}개
+            <span className="text-xs text-gray-700">
+              <span className="text-gray-500">박스</span> {box}개
             </span>
           )}
           {maker && (
-            <span className="text-xs text-gray-500">
-              <span className="text-gray-400">제약사</span> {maker}
+            <span className="text-xs text-gray-700">
+              <span className="text-gray-500">제약사</span> {maker}
             </span>
           )}
         </div>
