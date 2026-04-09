@@ -46,7 +46,8 @@ function HerbCard({ name, pid, grade, price, month, pack, box, maker }: HerbCard
   const navigate = useNavigate();
   const cleanName = stripMarkdownLink(name);
   const clickable = !!pid;
-  const formattedPrice = price ? Number(price).toLocaleString('ko-KR') : null;
+  const parsedPrice = price ? Number(price) : NaN;
+  const formattedPrice = !isNaN(parsedPrice) ? parsedPrice.toLocaleString('ko-KR') : null;
 
   return (
     <div
