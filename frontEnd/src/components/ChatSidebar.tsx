@@ -413,7 +413,7 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                                         return (
                                           <HerbCard
                                             name={data['약재명'] || ''}
-                                            pid={data['product_id']}
+                                            pid={data['_pid']}
                                             grade={data['구분']}
                                             price={data['근당가격']}
                                             month={data['기준월']}
