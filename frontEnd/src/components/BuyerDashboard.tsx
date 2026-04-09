@@ -7,6 +7,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { LogoutButton } from './LogoutButton';
 import { fetchHerbs, type HerbItem } from '../api';
 import { useCartCount } from '../hooks/useCartCount';
+import { useChatContext } from './ProtectedRoute';
 
 import defaultHerbImg from 'figma:asset/19e49e0900284b91c8363d4044be913cd97e16b9.png';
 
@@ -96,6 +97,7 @@ export function BuyerDashboard() {
   const [sortBy, setSortBy] = useState('default');
   const [herbs, setHerbs] = useState<HerbItem[]>([]);
   const cartCount = useCartCount();
+  const { isChatOpen } = useChatContext();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -538,9 +540,9 @@ export function BuyerDashboard() {
               </div>
             )}
 
-            {/* Product Grid - 4 columns */}
+            {/* Product Grid - 챗봇 열리면 3열, 닫히면 4열 */}
             {!loading && !error && (
-              <div className="grid grid-cols-4 gap-4">
+              <div className={`grid gap-4 ${isChatOpen ? 'grid-cols-3' : 'grid-cols-4'}`}>
                 {filteredProducts.map((herb) => (
                   <ProductCard
                     key={herb.id}

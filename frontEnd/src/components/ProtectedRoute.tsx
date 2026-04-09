@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router';
 import { getToken } from '../api';
 import { ChatSidebar } from './ChatSidebar';
 
-const SIDEBAR_WIDTH = 380;
+const SIDEBAR_WIDTH = 650;
 const STORAGE_KEY = 'palantiny_chat_open';
+
+interface ChatContextValue {
+  isChatOpen: boolean;
+}
+
+export const ChatContext = createContext<ChatContextValue>({ isChatOpen: false });
+export const useChatContext = () => useContext(ChatContext);
 
 export function ProtectedRoute() {
   const location = useLocation();
@@ -31,14 +38,16 @@ export function ProtectedRoute() {
   };
 
   return (
-    <div
-      style={{
-        paddingRight: isChatOpen ? SIDEBAR_WIDTH : 0,
-        transition: 'padding-right 300ms ease',
-      }}
-    >
-      <Outlet />
-      <ChatSidebar isOpen={isChatOpen} onToggle={handleToggle} />
-    </div>
+    <ChatContext.Provider value={{ isChatOpen }}>
+      <div
+        style={{
+          paddingRight: isChatOpen ? SIDEBAR_WIDTH : 0,
+          transition: 'padding-right 300ms ease',
+        }}
+      >
+        <Outlet />
+        <ChatSidebar isOpen={isChatOpen} onToggle={handleToggle} />
+      </div>
+    </ChatContext.Provider>
   );
 }
