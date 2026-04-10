@@ -22,7 +22,7 @@ function ThinkingLastLine({ thinking }: { thinking?: string }) {
   return (
     <span className="text-xs text-gray-400 italic">
       {lastLine || '생각 중...'}
-      <span className="opacity-70">▌</span>
+      <span className="animate-cursor-blink">▌</span>
     </span>
   );
 }
