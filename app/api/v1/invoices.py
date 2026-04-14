@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.models.invoice import Payment, TaxInvoice
+from app.models.user import User
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
@@ -33,9 +34,10 @@ class PaymentResponse(BaseModel):
 
 @router.get("/tax", response_model=list[TaxInvoiceResponse])
 async def get_tax_invoices(
-    user_id: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = current_user.user_id
     result = await db.execute(
         select(TaxInvoice).where(TaxInvoice.user_id == user_id).order_by(TaxInvoice.created_at.desc())
     )
@@ -44,9 +46,10 @@ async def get_tax_invoices(
 
 @router.get("/payments", response_model=list[PaymentResponse])
 async def get_payments(
-    user_id: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = current_user.user_id
     result = await db.execute(
         select(Payment).where(Payment.user_id == user_id).order_by(Payment.created_at.desc())
     )

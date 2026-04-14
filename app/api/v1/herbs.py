@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.api.deps import get_current_user
 from app.core.config import get_settings
 from app.core.graph import get_neo4j_driver
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -128,7 +129,7 @@ def _clean_list(lst) -> list[str]:
 
 
 @router.get("")
-async def get_herbs(_: str = Depends(get_current_user)):
+async def get_herbs(_current_user: User = Depends(get_current_user)):
     driver = await get_neo4j_driver()
     if not driver:
         raise HTTPException(status_code=503, detail="Neo4j 연결이 설정되지 않았습니다.")
@@ -173,7 +174,7 @@ async def get_herbs(_: str = Depends(get_current_user)):
 
 
 @router.get("/{herb_id}")
-async def get_herb_detail(herb_id: str, _: str = Depends(get_current_user)):
+async def get_herb_detail(herb_id: str, _current_user: User = Depends(get_current_user)):
     driver = await get_neo4j_driver()
     if not driver:
         raise HTTPException(status_code=503, detail="Neo4j 연결이 설정되지 않았습니다.")
@@ -234,6 +235,7 @@ async def get_herb_detail(herb_id: str, _: str = Depends(get_current_user)):
         "meridian": ", ".join(meridians),
         "constitution": "",
         "warehouseMaker": "",
+        "warehouseOrigin": "",
         "warehouseDate": "",
         "warehouseExpired": "",
     }

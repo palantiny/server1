@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import auth, cart, herbs, invoices, orders
+from app.api.v1 import auth, cart, djmedi, herbs, invoices, orders
 from app.core.config import get_settings
 from app.core.database import close_db, init_db
 from app.core.graph import close_neo4j
@@ -50,6 +50,7 @@ app.include_router(herbs.router, prefix="/api/v1")
 app.include_router(orders.router, prefix="/api/v1")
 app.include_router(cart.router, prefix="/api/v1")
 app.include_router(invoices.router, prefix="/api/v1")
+app.include_router(djmedi.router, prefix="/api/v1")
 
 
 @app.get("/health")

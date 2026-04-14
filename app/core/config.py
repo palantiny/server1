@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "change-me-in-production"
     JWT_EXPIRE_HOURS: int = 24
 
+    # DJMEDI 약재 연동 API (PDF 기준 DEV URL, 운영 시 REAL URL로 변경)
+    DJMEDI_BASE_URL: str = "https://devapi.djmedi.net/djherb/"
+    DJMEDI_CFAUTHKEY: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
