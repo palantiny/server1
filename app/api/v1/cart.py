@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.models.cart import CartItem
+from app.models.user import User
 
 router = APIRouter(prefix="/cart", tags=["cart"])
 
@@ -33,9 +34,10 @@ class CartItemResponse(BaseModel):
 
 @router.get("", response_model=list[CartItemResponse])
 async def get_cart(
-    user_id: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = current_user.user_id
     result = await db.execute(select(CartItem).where(CartItem.user_id == user_id))
     return result.scalars().all()
 
@@ -43,9 +45,10 @@ async def get_cart(
 @router.post("", response_model=CartItemResponse)
 async def add_to_cart(
     body: CartItemCreate,
-    user_id: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = current_user.user_id
     # 동일 product_id 이미 있으면 수량만 증가
     result = await db.execute(
         select(CartItem).where(CartItem.user_id == user_id, CartItem.product_id == body.product_id)
@@ -68,9 +71,10 @@ async def add_to_cart(
 async def update_cart_item(
     item_id: str,
     body: CartItemUpdate,
-    user_id: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = current_user.user_id
     result = await db.execute(
         select(CartItem).where(CartItem.id == item_id, CartItem.user_id == user_id)
     )
@@ -86,9 +90,10 @@ async def update_cart_item(
 @router.delete("/{item_id}")
 async def delete_cart_item(
     item_id: str,
-    user_id: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = current_user.user_id
     result = await db.execute(
         select(CartItem).where(CartItem.id == item_id, CartItem.user_id == user_id)
     )

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.models.order import Order, OrderCancellation
+from app.models.user import User
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -54,9 +55,10 @@ class CancellationResponse(BaseModel):
 # ── 엔드포인트 ────────────────────────────────────────────
 @router.get("", response_model=list[OrderResponse])
 async def get_orders(
-    user_id: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = current_user.user_id
     result = await db.execute(
         select(Order).where(Order.user_id == user_id).order_by(Order.created_at.desc())
     )
@@ -66,9 +68,10 @@ async def get_orders(
 @router.post("", response_model=OrderResponse)
 async def create_order(
     body: OrderCreate,
-    user_id: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = current_user.user_id
     order = Order(user_id=user_id, **body.model_dump())
     db.add(order)
     await db.flush()
@@ -78,9 +81,10 @@ async def create_order(
 
 @router.get("/cancellations", response_model=list[CancellationResponse])
 async def get_cancellations(
-    user_id: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = current_user.user_id
     result = await db.execute(
         select(OrderCancellation)
         .where(OrderCancellation.user_id == user_id)
@@ -92,9 +96,10 @@ async def get_cancellations(
 @router.post("/cancellations", response_model=CancellationResponse)
 async def create_cancellation(
     body: CancellationCreate,
-    user_id: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = current_user.user_id
     item = OrderCancellation(user_id=user_id, **body.model_dump())
     db.add(item)
     await db.flush()
