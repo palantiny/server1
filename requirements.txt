@@ -20,6 +20,7 @@ neo4j>=5.0.0
 
 # 비밀번호 해시
 passlib[bcrypt]>=1.7.4
+bcrypt==4.0.1
 
 # DJMEDI 외부 API 호출
 httpx>=0.27.0
