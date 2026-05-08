@@ -21,31 +21,11 @@ router = APIRouter(prefix="/herbs", tags=["herbs"])
 
 
 def _shape_list_item(med: dict, mm: dict | None = None) -> dict[str, Any]:
-    """DJMEDI 응답 한 건 → frontend HerbItem 호환 형식.
-    Phase 3에서 frontend HerbItem이 단순화되면 이 함수도 단순화 가능.
-    """
     return {
         "id": med.get("md_code", ""),
         "name": med.get("md_name", ""),
-        "name_chn": "",
-        "name_eng": "",
         "origin": (mm or {}).get("mm_origin", ""),
-        "price": 0,
-        "stockStatus": "high",
-        "qty": 0,
-        "description": "",
-        "feature": "",
-        "note": "",
-        "interaction": "",
-        "related": "",
-        "property": "",
         "manufacturer": med.get("mk_name", ""),
-        "packagingUnitG": "",
-        "boxQuantity": "",
-        "subscriptionPrice": "",
-        "discountRate": "",
-        "grade": "",
-        "marketType": "",
     }
 
 
@@ -126,18 +106,9 @@ async def get_herb_detail(md_code: str, user: User = Depends(get_current_user)) 
             logger.warning("my_medicines 보강 실패: %s", e)
 
     base = _shape_list_item(found, mm)
-    # HerbDetail 추가 필드 (Phase 3에서 단순화)
     base.update({
-        "status": "",
         "code": found.get("md_code", ""),
-        "pricePerGeun": "",
-        "nature": "",
-        "taste": "",
-        "meridian": "",
-        "constitution": "",
         "warehouseMaker": found.get("mk_name", ""),
         "warehouseOrigin": (mm or {}).get("mm_origin", ""),
-        "warehouseDate": "",
-        "warehouseExpired": "",
     })
     return base
