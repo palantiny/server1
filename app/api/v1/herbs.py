@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_current_user
+from app.core.config import get_settings
 from app.models.user import User
 from app.services.djmedi_service import list_user_medicines
 
@@ -40,15 +41,17 @@ def _shape_list_item(med: dict) -> dict[str, Any]:
 async def list_herbs(user: User = Depends(get_current_user)) -> dict[str, Any]:
     """사용자(cfcode)에게 등록된 약재 목록.
 
-    cfcode가 없으면 빈 목록 반환.
+    cfcode가 없으면 빈 목록 반환. admin role은 ADMIN_CFCODE fallback.
     """
-    if not user.cfcode:
+    settings = get_settings()
+    effective_cfcode = user.cfcode or (settings.ADMIN_CFCODE if user.role == "admin" else None)
+    if not effective_cfcode:
         return {"herbs": [], "total": 0}
 
     try:
-        items = await list_user_medicines(user.cfcode)
+        items = await list_user_medicines(effective_cfcode)
     except Exception:
-        logger.exception("list_user_medicines 실패 (cfcode=%s)", user.cfcode)
+        logger.exception("list_user_medicines 실패 (cfcode=%s)", effective_cfcode)
         raise HTTPException(status_code=503, detail="약재 목록 조회에 실패했습니다.")
 
     herbs = [_shape_list_item(item) for item in items if item.get("md_name")]
@@ -58,15 +61,14 @@ async def list_herbs(user: User = Depends(get_current_user)) -> dict[str, Any]:
 
 @router.get("/{md_code}")
 async def get_herb_detail(md_code: str, user: User = Depends(get_current_user)) -> dict[str, Any]:
-    """약재 상세 — 약재명/원산지/제조사 3가지만.
-
-    user.cfcode 사용자의 등록 약재 중 md_code 매칭 1건 반환.
-    """
-    if not user.cfcode:
+    """약재 상세 — 약재명/원산지/제조사 3가지만."""
+    settings = get_settings()
+    effective_cfcode = user.cfcode or (settings.ADMIN_CFCODE if user.role == "admin" else None)
+    if not effective_cfcode:
         raise HTTPException(status_code=404, detail="해당 약재를 찾을 수 없습니다.")
 
     try:
-        items = await list_user_medicines(user.cfcode)
+        items = await list_user_medicines(effective_cfcode)
     except Exception:
         logger.exception("get_herb_detail: list_user_medicines 실패")
         raise HTTPException(status_code=503, detail="약재 상세 조회 실패")

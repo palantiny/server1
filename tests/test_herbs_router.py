@@ -4,7 +4,7 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 
 
-def _override_user(cfcode: str | None):
+def _override_user(cfcode: str | None, role: str = "admin"):
     """app.dependency_overrides에 넣을 fake get_current_user 팩토리."""
     from app.models.user import User
 
@@ -13,7 +13,7 @@ def _override_user(cfcode: str | None):
             user_id="admin",
             username="admin",
             cfcode=cfcode,
-            role="admin",
+            role=role,
             partner_token="x",
             hashed_password="x",
         )
@@ -34,11 +34,11 @@ def auth_token():
 
 @pytest.fixture
 def auth_token_no_cfcode():
-    """cfcode 없는 사용자."""
+    """cfcode 없는 비-admin 사용자 (admin은 ADMIN_CFCODE fallback이 있어 별도 테스트)."""
     from app.api.deps import get_current_user
     from app.web_main import app
 
-    app.dependency_overrides[get_current_user] = _override_user(None)
+    app.dependency_overrides[get_current_user] = _override_user(None, role="user")
     yield
     app.dependency_overrides.pop(get_current_user, None)
 
@@ -110,3 +110,28 @@ async def test_get_herb_detail_returns_404_when_not_in_user_inventory(auth_token
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             res = await client.get("/api/v1/herbs/M1", headers={"Authorization": "Bearer x"})
     assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_herbs_uses_admin_cfcode_fallback_when_admin_has_no_cfcode():
+    """admin role + cfcode=None → ADMIN_CFCODE("dj") fallback 사용."""
+    from app.api.deps import get_current_user
+    from app.web_main import app
+
+    app.dependency_overrides[get_current_user] = _override_user(None, role="admin")
+
+    async def fake_list_user_medicines(cfcode):
+        # admin fallback이 적용됐다면 cfcode == "dj"
+        assert cfcode == "dj"
+        return [{"md_code": "M1", "md_name": "감초", "mm_origin": "한국", "mk_name": "디제이허브"}]
+
+    try:
+        with patch("app.api.v1.herbs.list_user_medicines", side_effect=fake_list_user_medicines):
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                res = await client.get("/api/v1/herbs", headers={"Authorization": "Bearer x"})
+        assert res.status_code == 200
+        data = res.json()
+        assert data["total"] == 1
+        assert data["herbs"][0]["name"] == "감초"
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
