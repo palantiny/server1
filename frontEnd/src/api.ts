@@ -41,41 +41,29 @@ export async function loginUser(username: string, password: string): Promise<voi
 }
 
 export interface HerbItem {
-  id: string;
-  name: string;
-  name_chn: string;
-  name_eng: string;
-  origin: string;
-  price: number;
-  stockStatus: "high" | "medium" | "low" | "out";
-  qty: number;
-  description: string;
-  feature: string;
-  note: string;
-  interaction: string;
-  related: string;
-  property: string;
-  manufacturer: string;
-  packagingUnitG: string;
-  boxQuantity: string;
-  subscriptionPrice: string;
-  discountRate: string;
-  grade: string;
-  marketType: string;
+  id: string;            // md_code
+  name: string;          // md_name
+  origin: string;        // mm_origin (cfcode 시) 또는 ""
+  manufacturer: string;  // mk_name
 }
 
 export interface HerbDetail extends HerbItem {
-  status: string;
-  code: string;
-  pricePerGeun: string;
-  nature: string;
-  taste: string;
-  meridian: string;
-  constitution: string;
+  code: string;          // md_code (호환용)
   warehouseMaker: string;
   warehouseOrigin: string;
-  warehouseDate: string;
-  warehouseExpired: string;
+}
+
+// ── 챗봇 SSE 카드 데이터 ──────────────────────────────────────
+export interface HerbCardData {
+  md_code: string;
+  md_name: string;
+  mk_code?: string;
+  mk_name?: string;
+  md_medi?: string;
+  // membermedicine API에서만 제공
+  mm_medicine?: string;
+  mm_name?: string;
+  mm_origin?: string;
 }
 
 function authHeaders(): HeadersInit {

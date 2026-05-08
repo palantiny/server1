@@ -9,50 +9,6 @@ import { fetchHerbs, type HerbItem } from '../api';
 import { useCartCount } from '../hooks/useCartCount';
 import { useChatContext } from './ProtectedRoute';
 
-import defaultHerbImg from 'figma:asset/19e49e0900284b91c8363d4044be913cd97e16b9.png';
-
-// 한글 초성별 카테고리 정의
-const initialCategories = [
-  { id: 'all', label: '전체', initial: '' },
-  { id: 'ga', label: '가', initial: 'ㄱ' },
-  { id: 'na-ra', label: '나/다/라', initial: 'ㄴㄷㄹ' },
-  { id: 'ma', label: '마', initial: 'ㅁ' },
-  { id: 'ba', label: '바', initial: 'ㅂ' },
-  { id: 'sa', label: '사', initial: 'ㅅ' },
-  { id: 'a', label: '아', initial: 'ㅇ' },
-  { id: 'ja', label: '자', initial: 'ㅈ' },
-  { id: 'cha', label: '차', initial: 'ㅊ' },
-  { id: 'ka-pa', label: '카/타/파', initial: 'ㅋㅌㅍ' },
-  { id: 'ha', label: '하', initial: 'ㅎ' },
-];
-
-// 한글 초성 추출 함수
-const getInitial = (char: string): string => {
-  const code = char.charCodeAt(0) - 44032;
-  if (code < 0 || code > 11171) return '';
-  const initials = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
-  return initials[Math.floor(code / 588)];
-};
-
-// 약재 카테고리 정의
-const formCategories = [
-  { id: 'root', label: '뿌리류' },
-  { id: 'bark', label: '껍질류' },
-  { id: 'fruit', label: '열매류' },
-  { id: 'flower', label: '꽃류' },
-  { id: 'leaf', label: '잎류' },
-  { id: 'whole', label: '전초류' },
-];
-
-const efficacyCategories = [
-  { id: 'tonify-qi', label: '보기약(기운)' },
-  { id: 'tonify-blood', label: '보혈약(혈액)' },
-  { id: 'tonify-yin', label: '보음약(음기)' },
-  { id: 'tonify-yang', label: '보양약(양기)' },
-  { id: 'clear-heat', label: '청열약(열내림)' },
-  { id: 'dispel-wind', label: '거풍약(바람)' },
-];
-
 const originCategories = [
   { id: 'domestic', label: '국내산' },
   { id: 'china', label: '중국산' },
@@ -83,15 +39,8 @@ const getOriginCountry = (origin: string): string => {
 
 export function BuyerDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedInitial, setSelectedInitial] = useState('all');
-  const [selectedForms, setSelectedForms] = useState<string[]>([]);
-  const [selectedEfficacies, setSelectedEfficacies] = useState<string[]>([]);
   const [selectedOrigins, setSelectedOrigins] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState([0, 1000000]);
   const [expandedFilters, setExpandedFilters] = useState({
-    initial: true,
-    form: true,
-    efficacy: true,
     origin: true,
   });
   const [sortBy, setSortBy] = useState('default');
@@ -113,62 +62,21 @@ export function BuyerDashboard() {
       });
   }, []);
 
-  const toggleFormFilter = (id: string) => {
-    setSelectedForms(prev => 
-      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
-    );
-  };
-
-  const toggleEfficacyFilter = (id: string) => {
-    setSelectedEfficacies(prev => 
-      prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
-    );
-  };
-
   const toggleOriginFilter = (id: string) => {
-    setSelectedOrigins(prev => 
+    setSelectedOrigins(prev =>
       prev.includes(id) ? prev.filter(o => o !== id) : [...prev, id]
     );
-  };
-
-  // 형상별/부위 키워드 매핑
-  const formKeywords: Record<string, string[]> = {
-    root: ['뿌리', '근'],
-    bark: ['껍질', '피', '수피', '피부'],
-    fruit: ['열매', '과실', '씨', '종자', '자'],
-    flower: ['꽃', '화', '花'],
-    leaf: ['잎', '엽', '葉'],
-    whole: ['전초', '줄기', '경', '초'],
-  };
-
-  // 효능 키워드 매핑
-  const efficacyKeywords: Record<string, string[]> = {
-    'tonify-qi': ['보기', '기운', '보익', '익기'],
-    'tonify-blood': ['보혈', '혈액', '양혈'],
-    'tonify-yin': ['보음', '음기', '자음'],
-    'tonify-yang': ['보양', '양기', '온양'],
-    'clear-heat': ['청열', '열내림', '해열', '열'],
-    'dispel-wind': ['거풍', '풍', '진통'],
   };
 
   // 카테고리별 필터링 + 정렬
   const filteredProducts = useMemo(() => herbs
     .filter((herb) => {
-      // 검색어 필터
-      const matchesSearch = herb.name.toLowerCase().includes(searchTerm.toLowerCase());
-
-      // 한글 자음 필터
-      let matchesInitial = true;
-      if (selectedInitial !== 'all') {
-        const category = initialCategories.find(c => c.id === selectedInitial);
-        if (category && category.initial) {
-          const herbInitial = getInitial(herb.name[0]);
-          matchesInitial = category.initial.includes(herbInitial);
-        }
-      }
-
-      // 가격 범위 필터
-      const matchesPrice = herb.price >= priceRange[0] && herb.price <= priceRange[1];
+      // 검색어 필터 (name, manufacturer, origin)
+      const term = searchTerm.toLowerCase();
+      const matchesSearch =
+        herb.name.toLowerCase().includes(term) ||
+        (herb.manufacturer ?? '').toLowerCase().includes(term) ||
+        (herb.origin ?? '').toLowerCase().includes(term);
 
       // 원산지 필터
       const originCountry = getOriginCountry(herb.origin);
@@ -177,29 +85,15 @@ export function BuyerDashboard() {
         (selectedOrigins.includes('china') && originCountry === '중국') ||
         (selectedOrigins.includes('vietnam') && originCountry === '베트남');
 
-      // 형상별/부위 필터 (이름 포함)
-      const matchesForm = selectedForms.length === 0 || selectedForms.some((formId) => {
-        const keywords = formKeywords[formId] ?? [];
-        const haystack = `${herb.name} ${herb.property} ${herb.description} ${herb.feature}`;
-        return keywords.some(kw => haystack.includes(kw));
-      });
-
-      // 효능 필터
-      const matchesEfficacy = selectedEfficacies.length === 0 || selectedEfficacies.some((effId) => {
-        const keywords = efficacyKeywords[effId] ?? [];
-        const haystack = `${herb.name} ${herb.feature} ${herb.description}`;
-        return keywords.some(kw => haystack.includes(kw));
-      });
-
-      return matchesSearch && matchesInitial && matchesPrice && matchesOrigin && matchesForm && matchesEfficacy;
+      return matchesSearch && matchesOrigin;
     })
     .sort((a, b) => {
-      if (sortBy === 'price-asc') return a.price - b.price;
-      if (sortBy === 'price-desc') return b.price - a.price;
       if (sortBy === 'name') return a.name.localeCompare(b.name, 'ko');
+      if (sortBy === 'manufacturer') return (a.manufacturer ?? '').localeCompare(b.manufacturer ?? '', 'ko');
+      if (sortBy === 'origin') return (a.origin ?? '').localeCompare(b.origin ?? '', 'ko');
       return 0;
     }),
-  [herbs, searchTerm, selectedInitial, priceRange, selectedOrigins, selectedForms, selectedEfficacies, sortBy]);
+  [herbs, searchTerm, selectedOrigins, sortBy]);
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
@@ -223,7 +117,7 @@ export function BuyerDashboard() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <Button 
+                <Button
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-9 px-4 bg-[#059669] hover:bg-[#047857] text-white rounded-[8px]"
                 >
                   <Search className="w-4 h-4" />
@@ -272,159 +166,8 @@ export function BuyerDashboard() {
               </div>
 
               <div className="p-4">
-                {/* 한글 자음 */}
-                <div className="mb-4">
-                  <button
-                    onClick={() => setExpandedFilters({ ...expandedFilters, initial: !expandedFilters.initial })}
-                    className="flex items-center justify-between w-full text-sm font-semibold text-[#191F28] mb-2"
-                  >
-                    <span>한글 자음</span>
-                    {expandedFilters.initial ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </button>
-                  {expandedFilters.initial && (
-                    <div className="space-y-1 ml-1">
-                      {initialCategories.map((category) => (
-                        <label 
-                          key={category.id} 
-                          className={`flex items-center gap-2.5 cursor-pointer group px-2 py-1.5 rounded-[6px] transition-colors ${
-                            selectedInitial === category.id 
-                              ? 'bg-[#059669]/5 text-[#059669]' 
-                              : 'hover:bg-gray-50 text-gray-700'
-                          }`}
-                        >
-                          <div className="relative flex items-center justify-center">
-                            <input
-                              type="radio"
-                              name="initial"
-                              checked={selectedInitial === category.id}
-                              onChange={() => setSelectedInitial(category.id)}
-                              className="sr-only peer"
-                            />
-                            <div className={`w-4 h-4 rounded-full border-2 transition-all ${
-                              selectedInitial === category.id
-                                ? 'border-[#059669] bg-[#059669]'
-                                : 'border-gray-300 group-hover:border-[#059669]'
-                            }`}>
-                              {selectedInitial === category.id && (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <span className={`text-sm transition-colors ${
-                            selectedInitial === category.id ? 'font-medium' : ''
-                          }`}>
-                            {category.label}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* 형상별/부위 */}
-                <div className="mb-4 pt-4 border-t border-gray-200">
-                  <button
-                    onClick={() => setExpandedFilters({ ...expandedFilters, form: !expandedFilters.form })}
-                    className="flex items-center justify-between w-full text-sm font-semibold text-[#191F28] mb-2"
-                  >
-                    <span>형상별/부위</span>
-                    {expandedFilters.form ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </button>
-                  {expandedFilters.form && (
-                    <div className="space-y-1 ml-1">
-                      {formCategories.map((category) => (
-                        <label 
-                          key={category.id} 
-                          className={`flex items-center gap-2.5 cursor-pointer group px-2 py-1.5 rounded-[6px] transition-colors ${
-                            selectedForms.includes(category.id)
-                              ? 'bg-[#059669]/5 text-[#059669]'
-                              : 'hover:bg-gray-50 text-gray-700'
-                          }`}
-                        >
-                          <div className="relative flex items-center justify-center">
-                            <input
-                              type="checkbox"
-                              checked={selectedForms.includes(category.id)}
-                              onChange={() => toggleFormFilter(category.id)}
-                              className="sr-only peer"
-                            />
-                            <div className={`w-4 h-4 rounded transition-all ${
-                              selectedForms.includes(category.id)
-                                ? 'border-2 border-[#059669] bg-[#059669]'
-                                : 'border-2 border-gray-300 group-hover:border-[#059669]'
-                            }`}>
-                              {selectedForms.includes(category.id) && (
-                                <svg className="w-full h-full text-white" viewBox="0 0 16 16" fill="none">
-                                  <path d="M13 4L6 11L3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                              )}
-                            </div>
-                          </div>
-                          <span className={`text-sm transition-colors ${
-                            selectedForms.includes(category.id) ? 'font-medium' : ''
-                          }`}>
-                            {category.label}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* 효능 */}
-                <div className="mb-4 pt-4 border-t border-gray-200">
-                  <button
-                    onClick={() => setExpandedFilters({ ...expandedFilters, efficacy: !expandedFilters.efficacy })}
-                    className="flex items-center justify-between w-full text-sm font-semibold text-[#191F28] mb-2"
-                  >
-                    <span>효능</span>
-                    {expandedFilters.efficacy ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </button>
-                  {expandedFilters.efficacy && (
-                    <div className="space-y-1 ml-1">
-                      {efficacyCategories.map((category) => (
-                        <label 
-                          key={category.id} 
-                          className={`flex items-center gap-2.5 cursor-pointer group px-2 py-1.5 rounded-[6px] transition-colors ${
-                            selectedEfficacies.includes(category.id)
-                              ? 'bg-[#059669]/5 text-[#059669]'
-                              : 'hover:bg-gray-50 text-gray-700'
-                          }`}
-                        >
-                          <div className="relative flex items-center justify-center">
-                            <input
-                              type="checkbox"
-                              checked={selectedEfficacies.includes(category.id)}
-                              onChange={() => toggleEfficacyFilter(category.id)}
-                              className="sr-only peer"
-                            />
-                            <div className={`w-4 h-4 rounded transition-all ${
-                              selectedEfficacies.includes(category.id)
-                                ? 'border-2 border-[#059669] bg-[#059669]'
-                                : 'border-2 border-gray-300 group-hover:border-[#059669]'
-                            }`}>
-                              {selectedEfficacies.includes(category.id) && (
-                                <svg className="w-full h-full text-white" viewBox="0 0 16 16" fill="none">
-                                  <path d="M13 4L6 11L3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                              )}
-                            </div>
-                          </div>
-                          <span className={`text-sm transition-colors ${
-                            selectedEfficacies.includes(category.id) ? 'font-medium' : ''
-                          }`}>
-                            {category.label}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 {/* 원산지 */}
-                <div className="pt-4 border-t border-gray-200">
+                <div>
                   <button
                     onClick={() => setExpandedFilters({ ...expandedFilters, origin: !expandedFilters.origin })}
                     className="flex items-center justify-between w-full text-sm font-semibold text-[#191F28] mb-2"
@@ -435,8 +178,8 @@ export function BuyerDashboard() {
                   {expandedFilters.origin && (
                     <div className="space-y-1 ml-1">
                       {originCategories.map((category) => (
-                        <label 
-                          key={category.id} 
+                        <label
+                          key={category.id}
                           className={`flex items-center gap-2.5 cursor-pointer group px-2 py-1.5 rounded-[6px] transition-colors ${
                             selectedOrigins.includes(category.id)
                               ? 'bg-[#059669]/5 text-[#059669]'
@@ -481,16 +224,10 @@ export function BuyerDashboard() {
             {/* 상단 탭과 정렬 */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Button 
+                <Button
                   className="h-10 px-6 bg-[#059669] hover:bg-[#047857] text-white rounded-[8px] text-sm"
                 >
                   모든 항목
-                </Button>
-                <Button 
-                  variant="outline"
-                  className="h-10 px-6 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-[8px] text-sm"
-                >
-                  카테고리별
                 </Button>
               </div>
 
@@ -503,13 +240,8 @@ export function BuyerDashboard() {
                 >
                   <option value="default">기본순</option>
                   <option value="name">이름순</option>
-                  <option value="price-asc">가격 낮은순</option>
-                  <option value="price-desc">가격 높은순</option>
-                </select>
-                <select className="h-10 px-3 border border-gray-300 rounded-[8px] text-sm bg-white text-gray-700">
-                  <option>모두</option>
-                  <option>국산</option>
-                  <option>수입</option>
+                  <option value="manufacturer">제조사순</option>
+                  <option value="origin">원산지순</option>
                 </select>
               </div>
             </div>
@@ -540,7 +272,7 @@ export function BuyerDashboard() {
               </div>
             )}
 
-            {/* Product Grid - 챗봇 열리면 3열, 닫히면 4열 */}
+            {/* Product Grid - 챗봇 열리면 4열, 닫히면 5열 */}
             {!loading && !error && (
               <div className={`grid gap-4 ${isChatOpen ? 'grid-cols-4' : 'grid-cols-5'}`}>
                 {filteredProducts.map((herb) => (
@@ -549,11 +281,7 @@ export function BuyerDashboard() {
                     id={herb.id}
                     name={herb.name}
                     origin={getOriginLabel(herb.origin)}
-                    price={herb.price}
-                    stockStatus={herb.stockStatus}
                     manufacturer={herb.manufacturer}
-                    packagingUnitG={herb.packagingUnitG}
-                    qty={herb.qty}
                   />
                 ))}
               </div>

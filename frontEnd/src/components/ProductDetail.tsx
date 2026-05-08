@@ -1,19 +1,12 @@
 import { Link } from 'react-router';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { ArrowLeft, ShoppingCart, Heart, User, Bell, Search, FileText, Plus, Minus, Package, ChevronRight, Truck, CheckCircle2, Loader2, Leaf } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Heart, User, Bell, Search, FileText, Plus, Minus, Package, Truck, Loader2, Leaf } from 'lucide-react';
 import { LogoutButton } from './LogoutButton';
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { fetchHerbDetail, addToCart, type HerbDetail as HerbDetailType } from '../api';
 import { useCartCount } from '../hooks/useCartCount';
-
-const stockStatusConfig: Record<string, { label: string; color: string }> = {
-  high: { label: '충분', color: 'text-[#059669]' },
-  medium: { label: '보통', color: 'text-yellow-600' },
-  low: { label: '부족', color: 'text-orange-600' },
-  out: { label: '품절', color: 'text-red-600' },
-};
 
 export function ProductDetail() {
   const { id } = useParams();
@@ -73,7 +66,7 @@ export function ProductDetail() {
     if (!herb || cartLoading) return;
     setCartLoading(true);
     try {
-      await addToCart({ product_id: herb.id, product_name: herb.name, price: herb.price, quantity });
+      await addToCart({ product_id: herb.id, product_name: herb.name, price: 0, quantity });
       window.dispatchEvent(new Event('cart-updated'));
       setCartAdded(true);
       setTimeout(() => setCartAdded(false), 2000);
@@ -83,14 +76,6 @@ export function ProductDetail() {
       setCartLoading(false);
     }
   };
-
-  const stock = stockStatusConfig[herb.stockStatus] || stockStatusConfig.high;
-
-  // 카테고리 텍스트 생성
-  const categoryText = [
-    herb.marketType === 'domestic' ? '국내 약재' : herb.marketType === 'imported' ? '수입 약재' : '',
-    herb.grade,
-  ].filter(Boolean).join(' > ') || '한약재';
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
@@ -168,6 +153,12 @@ export function ProductDetail() {
               <h2 className="text-xl font-bold text-[#191F28] mb-6">약재 상세 정보</h2>
 
               <div className="space-y-4">
+                {herb.code && (
+                  <div className="flex border-b border-gray-100 pb-3">
+                    <div className="w-32 text-sm font-medium text-gray-600">제품 코드</div>
+                    <div className="flex-1 text-sm text-[#191F28]">{herb.code}</div>
+                  </div>
+                )}
                 {herb.manufacturer && (
                   <div className="flex border-b border-gray-100 pb-3">
                     <div className="w-32 text-sm font-medium text-gray-600">제조사</div>
@@ -180,137 +171,20 @@ export function ProductDetail() {
                     <div className="flex-1 text-sm text-[#191F28]">{herb.origin}</div>
                   </div>
                 )}
-                {herb.packagingUnitG && (
-                  <div className="flex border-b border-gray-100 pb-3">
-                    <div className="w-32 text-sm font-medium text-gray-600">포장단위</div>
-                    <div className="flex-1 text-sm text-[#191F28]">{herb.packagingUnitG}g</div>
-                  </div>
-                )}
-                {herb.pricePerGeun && (
-                  <div className="flex border-b border-gray-100 pb-3">
-                    <div className="w-32 text-sm font-medium text-gray-600">근당 가격</div>
-                    <div className="flex-1 text-sm text-[#191F28]">₩{Number(herb.pricePerGeun).toLocaleString()}</div>
-                  </div>
-                )}
-                {herb.boxQuantity && (
-                  <div className="flex border-b border-gray-100 pb-3">
-                    <div className="w-32 text-sm font-medium text-gray-600">박스 수량</div>
-                    <div className="flex-1 text-sm text-[#191F28]">{herb.boxQuantity}</div>
-                  </div>
-                )}
-                {herb.subscriptionPrice && (
-                  <div className="flex border-b border-gray-100 pb-3">
-                    <div className="w-32 text-sm font-medium text-gray-600">구독 가격</div>
-                    <div className="flex-1 text-sm text-[#191F28]">₩{Number(herb.subscriptionPrice).toLocaleString()}</div>
-                  </div>
-                )}
-                {herb.discountRate && (
-                  <div className="flex border-b border-gray-100 pb-3">
-                    <div className="w-32 text-sm font-medium text-gray-600">구독 할인율</div>
-                    <div className="flex-1 text-sm text-[#191F28]">{herb.discountRate}</div>
-                  </div>
-                )}
                 {herb.warehouseMaker && (
                   <div className="flex border-b border-gray-100 pb-3">
                     <div className="w-32 text-sm font-medium text-gray-600">입고 업체</div>
                     <div className="flex-1 text-sm text-[#191F28]">{herb.warehouseMaker}</div>
                   </div>
                 )}
-                {herb.warehouseDate && (
-                  <div className="flex border-b border-gray-100 pb-3">
-                    <div className="w-32 text-sm font-medium text-gray-600">입고일</div>
-                    <div className="flex-1 text-sm text-[#191F28]">{herb.warehouseDate}</div>
-                  </div>
-                )}
-                {herb.warehouseExpired && (
+                {herb.warehouseOrigin && (
                   <div className="flex pb-3">
-                    <div className="w-32 text-sm font-medium text-gray-600">유통기한</div>
-                    <div className="flex-1 text-sm text-[#191F28]">{herb.warehouseExpired}</div>
+                    <div className="w-32 text-sm font-medium text-gray-600">입고 원산지</div>
+                    <div className="flex-1 text-sm text-[#191F28]">{herb.warehouseOrigin}</div>
                   </div>
                 )}
               </div>
             </div>
-
-            {/* 한의학 정보 (성, 미, 귀경, 사상) */}
-            {(herb.nature || herb.taste || herb.meridian || herb.constitution) && (
-              <div className="bg-white rounded-[12px] border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-[#191F28] mb-6">한의학 정보</h2>
-                <div className="space-y-4">
-                  {herb.nature && (
-                    <div className="flex border-b border-gray-100 pb-3">
-                      <div className="w-32 text-sm font-medium text-gray-600">성 (性)</div>
-                      <div className="flex-1 text-sm text-[#191F28]">{herb.nature}</div>
-                    </div>
-                  )}
-                  {herb.taste && (
-                    <div className="flex border-b border-gray-100 pb-3">
-                      <div className="w-32 text-sm font-medium text-gray-600">미 (味)</div>
-                      <div className="flex-1 text-sm text-[#191F28]">{herb.taste}</div>
-                    </div>
-                  )}
-                  {herb.meridian && (
-                    <div className="flex border-b border-gray-100 pb-3">
-                      <div className="w-32 text-sm font-medium text-gray-600">귀경 (歸經)</div>
-                      <div className="flex-1 text-sm text-[#191F28]">{herb.meridian}</div>
-                    </div>
-                  )}
-                  {herb.constitution && (
-                    <div className="flex pb-3">
-                      <div className="w-32 text-sm font-medium text-gray-600">사상 (四象)</div>
-                      <div className="flex-1 text-sm text-[#191F28]">{herb.constitution}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 약재 설명 */}
-            {(herb.description || herb.feature || herb.property) && (
-              <div className="bg-white rounded-[12px] border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-[#191F28] mb-6">약재 설명</h2>
-                <div className="space-y-4">
-                  {herb.description && (
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-600 mb-1">설명</h3>
-                      <p className="text-sm text-[#191F28] leading-relaxed">{herb.description}</p>
-                    </div>
-                  )}
-                  {herb.feature && (
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-600 mb-1">특징</h3>
-                      <p className="text-sm text-[#191F28] leading-relaxed">{herb.feature}</p>
-                    </div>
-                  )}
-                  {herb.property && (
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-600 mb-1">가공 특성</h3>
-                      <p className="text-sm text-[#191F28] leading-relaxed">{herb.property}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 주의사항 */}
-            {(herb.interaction || herb.note) && (
-              <div className="bg-white rounded-[12px] border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-[#191F28] mb-6">주의사항</h2>
-                <div className="space-y-4">
-                  {herb.interaction && (
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-600 mb-1">상호작용</h3>
-                      <p className="text-sm text-[#191F28] leading-relaxed">{herb.interaction}</p>
-                    </div>
-                  )}
-                  {herb.note && (
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-600 mb-1">비고</h3>
-                      <p className="text-sm text-[#191F28] leading-relaxed">{herb.note}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* 안심 확인 서비스 */}
             <div className="bg-gradient-to-br from-[#059669]/5 to-white rounded-[12px] border border-[#059669]/20 p-6">
@@ -335,31 +209,14 @@ export function ProductDetail() {
           <div className="sticky top-6">
             <div className="bg-white rounded-[12px] border border-gray-200 p-6">
               {/* Category */}
-              <div className="text-sm text-gray-500 mb-2">{categoryText}</div>
+              <div className="text-sm text-gray-500 mb-2">한약재</div>
 
               {/* Product Title */}
               <h1 className="text-xl font-bold text-[#191F28] mb-1">{herb.name}</h1>
 
-              {/* Sub info */}
-              {(herb.name_chn || herb.name_eng) && (
-                <p className="text-sm text-gray-500 mb-3">
-                  {[herb.name_chn, herb.name_eng].filter(Boolean).join(' / ')}
-                </p>
+              {herb.manufacturer && (
+                <p className="text-sm text-gray-500 mb-3">{herb.manufacturer}</p>
               )}
-
-              {/* Description */}
-              {herb.description && (
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">{herb.description}</p>
-              )}
-
-              <div className="border-t border-gray-200 my-4"></div>
-
-              {/* Price */}
-              <div className="mb-4">
-                <div className="text-3xl font-bold text-[#059669]">
-                  {herb.price ? `₩${herb.price.toLocaleString()}` : '가격 문의'}
-                </div>
-              </div>
 
               <div className="border-t border-gray-200 my-4"></div>
 
@@ -388,18 +245,6 @@ export function ProductDetail() {
                 </div>
               </div>
 
-              {/* Total Price */}
-              {herb.price > 0 && (
-                <div className="bg-gray-50 rounded-[8px] p-3 mb-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">구매 수량 {quantity}개</span>
-                    <span className="text-xl font-bold text-[#059669]">
-                      ₩{(herb.price * quantity).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              )}
-
               {/* Action Buttons */}
               <div className="space-y-2 mb-4">
                 <Button className="w-full h-12 bg-[#059669] hover:bg-[#047857] text-white rounded-[8px]">
@@ -408,7 +253,7 @@ export function ProductDetail() {
                 <Button
                   variant="outline"
                   onClick={handleAddToCart}
-                  disabled={cartLoading || herb?.stockStatus === 'out'}
+                  disabled={cartLoading}
                   className={`w-full h-12 rounded-[8px] transition-colors ${
                     cartAdded
                       ? 'border-[#059669] bg-[#059669]/5 text-[#059669]'
@@ -423,17 +268,6 @@ export function ProductDetail() {
 
               {/* Delivery Information */}
               <div className="space-y-3">
-                <div className="flex items-start justify-between py-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-[#059669]" />
-                    <span className="text-sm text-gray-700">재고 상태</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className={`text-sm font-semibold ${stock.color}`}>{stock.label}</span>
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  </div>
-                </div>
-
                 <div className="flex items-start justify-between py-2">
                   <div className="flex items-center gap-2">
                     <Truck className="w-4 h-4 text-gray-600" />

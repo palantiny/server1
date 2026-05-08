@@ -1,241 +1,114 @@
 """
-Herbs API — Neo4j AuraDB Product 노드에서 약재 목록/상세 조회
-GET /herbs             : 전체 Product 목록 (id = product_id)
-GET /herbs/{herb_id}   : Product 상세 (herb_id = product_id)
+Herbs API — DJMEDI 외부 API 기반.
+
+GET /herbs           : 전체 약재 목록
+GET /herbs/{md_code} : 약재 상세
 """
+from __future__ import annotations
+
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_current_user
-from app.core.config import get_settings
-from app.core.graph import get_neo4j_driver
 from app.models.user import User
+from app.services.djmedi_service import smart_search
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 router = APIRouter(prefix="/herbs", tags=["herbs"])
 
-_LIST_QUERY = """
-MATCH (h:Herb)-[:HAS_PRODUCT]->(p:Product)
-OPTIONAL MATCH (p)-[:MANUFACTURED_BY]->(mk:Maker)
-OPTIONAL MATCH (p)-[:ORIGINATES_FROM]->(o:Origin)
-OPTIONAL MATCH (h)-[:HAS_EFFICACY]->(e:Efficacy)
-OPTIONAL MATCH (h)-[:HAS_TEMP]->(t:NatureTemp)
-OPTIONAL MATCH (h)-[:HAS_TASTE]->(ta:NatureTaste)
-WITH h, p, mk, o,
-     COLLECT(DISTINCT e.name) AS efficacies,
-     COLLECT(DISTINCT t.name) AS natures,
-     COLLECT(DISTINCT ta.name) AS tastes
-OPTIONAL MATCH (p)-[:HAS_PRICE_HISTORY]->(pr:PriceRecord)
-WITH h, p, mk, o, efficacies, natures, tastes, pr
-ORDER BY pr.month DESC
-WITH h, p, mk, o, efficacies, natures, tastes, COLLECT(pr)[0] AS latest
-RETURN
-  p.product_id AS id,
-  h.name AS name,
-  p.type AS type,
-  p.pack_unit AS pack_unit,
-  p.pack_price AS pack_price,
-  p.box_qty AS box_qty,
-  latest.price_per_geun AS price_per_geun,
-  latest.status AS status,
-  mk.name AS maker,
-  o.name AS origin,
-  efficacies,
-  natures,
-  tastes
-ORDER BY h.name
-"""
 
-_DETAIL_QUERY = """
-MATCH (h:Herb)-[:HAS_PRODUCT]->(p:Product {product_id: $product_id})
-OPTIONAL MATCH (p)-[:MANUFACTURED_BY]->(mk:Maker)
-OPTIONAL MATCH (p)-[:ORIGINATES_FROM]->(o:Origin)
-OPTIONAL MATCH (h)-[:HAS_EFFICACY]->(e:Efficacy)
-OPTIONAL MATCH (h)-[:HAS_TEMP]->(t:NatureTemp)
-OPTIONAL MATCH (h)-[:HAS_TASTE]->(ta:NatureTaste)
-OPTIONAL MATCH (h)-[:ACTS_ON]->(m:Meridian)
-OPTIONAL MATCH (h)-[:TREATS]->(s:Symptom)
-OPTIONAL MATCH (h)-[:CONTRAINDICATES]->(c)
-WITH h, p, mk, o,
-     COLLECT(DISTINCT e.name) AS efficacies,
-     COLLECT(DISTINCT t.name) AS natures,
-     COLLECT(DISTINCT ta.name) AS tastes,
-     COLLECT(DISTINCT m.name) AS meridians,
-     COLLECT(DISTINCT s.name) AS symptoms,
-     COLLECT(DISTINCT c.name) AS contraindications
-OPTIONAL MATCH (p)-[:HAS_PRICE_HISTORY]->(pr:PriceRecord)
-WITH h, p, mk, o, efficacies, natures, tastes, meridians, symptoms, contraindications, pr
-ORDER BY pr.month DESC
-WITH h, p, mk, o, efficacies, natures, tastes, meridians, symptoms, contraindications,
-     COLLECT(pr)[0] AS latest
-RETURN
-  p.product_id AS id,
-  h.name AS name,
-  h.synonyms AS synonyms,
-  h.toxicity AS toxicity,
-  p.type AS type,
-  p.pack_unit AS pack_unit,
-  p.pack_price AS pack_price,
-  p.box_qty AS box_qty,
-  latest.price_per_geun AS price_per_geun,
-  latest.status AS status,
-  mk.name AS maker,
-  o.name AS origin,
-  efficacies,
-  natures,
-  tastes,
-  meridians,
-  symptoms,
-  contraindications
-"""
-
-
-def _parse_price(value) -> int:
-    """콤마 포함 가격 문자열 → int."""
-    if value is None:
-        return 0
-    try:
-        return int(str(value).replace(",", "").strip())
-    except (ValueError, TypeError):
-        return 0
-
-
-def _stock_status(status: str | None) -> str:
-    if not status:
-        return "high"
-    s = str(status).strip()
-    if s in ("품절", "soldout"):
-        return "out"
-    if s in ("부족", "low"):
-        return "low"
-    if s in ("보통", "medium"):
-        return "medium"
-    return "high"  # '정상' 포함
-
-
-def _market_type(origin_name: str | None) -> str:
-    if not origin_name:
-        return ""
-    if origin_name.strip() in ("한국", "국내", "대한민국"):
-        return "domestic"
-    return "imported"
-
-
-def _clean_list(lst) -> list[str]:
-    return [s for s in (lst or []) if s]
+def _shape_list_item(med: dict, mm: dict | None = None) -> dict[str, Any]:
+    return {
+        "id": med.get("md_code", ""),
+        "name": med.get("md_name", ""),
+        "origin": (mm or {}).get("mm_origin", ""),
+        "manufacturer": med.get("mk_name", ""),
+    }
 
 
 @router.get("")
-async def get_herbs(_current_user: User = Depends(get_current_user)):
-    driver = await get_neo4j_driver()
-    if not driver:
-        raise HTTPException(status_code=503, detail="Neo4j 연결이 설정되지 않았습니다.")
+async def list_herbs(user: User = Depends(get_current_user)) -> dict[str, Any]:
+    """전체 약재 목록.
 
+    cfcode 유무와 무관하게 herbmaker→herbmedicine 집계로 전체 목록 산출.
+    원산지가 필요한 사용자는 상세 페이지에서 cfcode 기반 my_medicines 조회.
+    """
     try:
-        async with driver.session(database=settings.NEO4J_DATABASE) as session:
-            result = await session.run(_LIST_QUERY)
-            records = [r.data() async for r in result]
+        _, makers = await smart_search(intent="get_maker_list")
     except Exception as e:
-        logger.exception("get_herbs: Neo4j 조회 실패")
-        raise HTTPException(status_code=503, detail=f"약재 목록 조회 실패: {e}") from e
+        logger.exception("get_maker_list 실패")
+        raise HTTPException(status_code=503, detail="약재 목록 조회에 실패했습니다.") from e
 
-    herbs = []
-    for r in records:
-        efficacies = _clean_list(r.get("efficacies"))
-        natures = _clean_list(r.get("natures"))
-        tastes = _clean_list(r.get("tastes"))
-        origin = r.get("origin") or ""
-
-        herbs.append({
-            "id": r["id"],
-            "name": r.get("name", ""),
-            "name_chn": "",
-            "name_eng": "",
-            "origin": origin,
-            "price": _parse_price(r.get("pack_price")),
-            "stockStatus": _stock_status(r.get("status")),
-            "qty": 0,
-            "description": ", ".join(efficacies),
-            "feature": ", ".join(efficacies),
-            "property": " ".join(natures + tastes),
-            "manufacturer": r.get("maker") or "",
-            "packagingUnitG": str(r.get("pack_unit") or "").replace(",", "").strip(),
-            "boxQuantity": str(r.get("box_qty") or "").strip(),
-            "subscriptionPrice": "",
-            "discountRate": "",
-            "grade": r.get("type") or "",
-            "marketType": _market_type(origin),
-        })
+    herbs: list[dict] = []
+    seen_md: set[str] = set()
+    for maker in makers:
+        mk_code = maker.get("mk_code")
+        if not mk_code:
+            continue
+        try:
+            _, meds = await smart_search(intent="get_herb_by_maker", maker_name=maker.get("mk_name"))
+        except Exception as e:
+            logger.warning("get_herb_by_maker 실패 (mk=%s): %s", mk_code, e)
+            continue
+        for m in meds:
+            if m.get("_type") == "notice":
+                continue
+            key = m.get("md_code") or ""
+            if not key or key in seen_md:
+                continue
+            seen_md.add(key)
+            herbs.append(_shape_list_item(m))
 
     return {"herbs": herbs, "total": len(herbs)}
 
 
-@router.get("/{herb_id}")
-async def get_herb_detail(herb_id: str, _current_user: User = Depends(get_current_user)):
-    driver = await get_neo4j_driver()
-    if not driver:
-        raise HTTPException(status_code=503, detail="Neo4j 연결이 설정되지 않았습니다.")
+@router.get("/{md_code}")
+async def get_herb_detail(md_code: str, user: User = Depends(get_current_user)) -> dict[str, Any]:
+    """약재 상세.
 
+    md_code로 herbmedicine 전수 조회 후 매칭 1건 반환.
+    cfcode가 있으면 my_medicines로 mm_origin 보강.
+    """
     try:
-        async with driver.session(database=settings.NEO4J_DATABASE) as session:
-            result = await session.run(_DETAIL_QUERY, product_id=herb_id)
-            record = await result.single()
+        _, makers = await smart_search(intent="get_maker_list")
     except Exception as e:
-        logger.exception("get_herb_detail: Neo4j 조회 실패")
-        raise HTTPException(status_code=503, detail=f"약재 상세 조회 실패: {e}") from e
+        raise HTTPException(status_code=503, detail="약재 상세 조회 실패") from e
 
-    if not record:
-        raise HTTPException(status_code=404, detail="약재를 찾을 수 없습니다.")
+    found: dict | None = None
+    for maker in makers:
+        try:
+            _, meds = await smart_search(intent="get_herb_by_maker", maker_name=maker.get("mk_name"))
+        except Exception:
+            continue
+        for m in meds:
+            if m.get("md_code") == md_code:
+                found = m
+                break
+        if found:
+            break
 
-    r = record.data()
-    efficacies = _clean_list(r.get("efficacies"))
-    natures = _clean_list(r.get("natures"))
-    tastes = _clean_list(r.get("tastes"))
-    meridians = _clean_list(r.get("meridians"))
-    contraindications = _clean_list(r.get("contraindications"))
-    synonyms = _clean_list(r.get("synonyms"))
-    origin = r.get("origin") or ""
+    if not found:
+        raise HTTPException(status_code=404, detail="해당 약재를 찾을 수 없습니다.")
 
-    price_per_geun = r.get("price_per_geun")
-    try:
-        price_per_geun_str = str(int(price_per_geun)) if price_per_geun is not None else ""
-    except (ValueError, TypeError):
-        price_per_geun_str = ""
+    mm: dict | None = None
+    if user.cfcode and found.get("md_medi"):
+        try:
+            _, mm_items = await smart_search(
+                intent="get_my_medicines",
+                herb_name=found.get("md_name"),
+                cfcode=user.cfcode,
+            )
+            mm = next((x for x in mm_items if x.get("md_code") == md_code and x.get("_type") != "notice"), None)
+        except Exception as e:
+            logger.warning("my_medicines 보강 실패: %s", e)
 
-    return {
-        "id": r["id"],
-        "name": r.get("name", ""),
-        "name_chn": "",
-        "name_eng": "",
-        "origin": origin,
-        "price": _parse_price(r.get("pack_price")),
-        "stockStatus": _stock_status(r.get("status")),
-        "qty": 0,
-        "status": "use",
-        "description": ", ".join(efficacies),
-        "feature": ", ".join(efficacies),
-        "property": " ".join(natures + tastes),
-        "note": r.get("toxicity") or "",
-        "interaction": ", ".join(contraindications),
-        "related": ", ".join(synonyms[:5]),
-        "code": r["id"],
-        "manufacturer": r.get("maker") or "",
-        "packagingUnitG": str(r.get("pack_unit") or "").replace(",", "").strip(),
-        "pricePerGeun": price_per_geun_str,
-        "boxQuantity": str(r.get("box_qty") or "").strip(),
-        "subscriptionPrice": "",
-        "discountRate": "",
-        "grade": r.get("type") or "",
-        "marketType": _market_type(origin),
-        "nature": ", ".join(natures),
-        "taste": ", ".join(tastes),
-        "meridian": ", ".join(meridians),
-        "constitution": "",
-        "warehouseMaker": "",
-        "warehouseOrigin": "",
-        "warehouseDate": "",
-        "warehouseExpired": "",
-    }
+    base = _shape_list_item(found, mm)
+    base.update({
+        "code": found.get("md_code", ""),
+        "warehouseMaker": found.get("mk_name", ""),
+        "warehouseOrigin": (mm or {}).get("mm_origin", ""),
+    })
+    return base

@@ -4,12 +4,14 @@ import { MessageCircle, X, Send, RotateCcw, ChevronRight, ChevronDown } from 'lu
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import { type HerbCardData } from '../api';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   thinking?: string;
   isError?: boolean;
+  cards?: { herb_name: string; data: HerbCardData }[];
 }
 
 function ThinkingLastLine({ thinking }: { thinking?: string }) {
@@ -35,6 +37,7 @@ interface HerbCardProps {
   pack?: string;
   box?: string;
   maker?: string;
+  origin?: string;
 }
 
 // 마크다운 링크 [텍스트](/경로) → 텍스트만 추출
@@ -42,7 +45,7 @@ function stripMarkdownLink(text: string): string {
   return text.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').trim();
 }
 
-function HerbCard({ name, pid, grade, price, month, pack, box, maker }: HerbCardProps) {
+function HerbCard({ name, pid, grade, price, month, pack, box, maker, origin }: HerbCardProps) {
   const navigate = useNavigate();
   const cleanName = stripMarkdownLink(name);
   const clickable = !!pid;
@@ -90,6 +93,11 @@ function HerbCard({ name, pid, grade, price, month, pack, box, maker }: HerbCard
           {maker && (
             <span className="text-xs text-gray-700">
               <span className="text-gray-500">제약사</span> {maker}
+            </span>
+          )}
+          {origin && (
+            <span className="text-xs text-gray-700">
+              <span className="text-gray-500">원산지</span> {origin}
             </span>
           )}
         </div>
@@ -154,7 +162,6 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
   });
 
   const [isStreaming, setIsStreaming] = useState(false);
-  const [showAllCardsMap, setShowAllCardsMap] = useState<Record<number, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -289,6 +296,14 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                   arr[arr.length - 1].content += data.content;
                   return arr;
                 });
+              } else if (data.type === 'herb_card' && data.data) {
+                setMessages((prev: ChatMessage[]) => {
+                  const newArr = [...prev];
+                  const last = newArr[newArr.length - 1];
+                  const newCards = [...(last.cards ?? []), { herb_name: data.herb_name, data: data.data }];
+                  newArr[newArr.length - 1] = { ...last, cards: newCards };
+                  return newArr;
+                });
               } else if (data.type === 'correction' && data.content) {
                 setMessages(prev => {
                   const arr = [...prev];
@@ -393,84 +408,54 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                       ) : (
                         <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_p]:text-base [&_p]:leading-relaxed [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mb-2 [&_ul]:text-base [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:mb-2 [&_ol]:text-base [&_li]:text-base [&_li]:leading-relaxed [&_a]:underline [&_table]:w-full [&_table]:my-2 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-2 [&_th]:text-left [&_th]:text-sm [&_th]:font-semibold [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_td]:text-sm [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-50 [&_tbody>tr]:transition-colors break-words overflow-x-auto text-base leading-relaxed">
                           {msg.thinking && <ThinkingBox thinking={msg.thinking} />}
-                          {(() => {
-                            const totalCards = (msg.content.match(/```herb-card/g) || []).length;
-                            const showAll = showAllCardsMap[idx] ?? false;
-                            const CARD_LIMIT = 5;
-                            let cardCount = 0;
-                            return (
-                              <>
-                                <ReactMarkdown
-                                  remarkPlugins={[remarkGfm]}
-                                  rehypePlugins={[rehypeRaw]}
-                                  components={{
-                                    code: ({ className, children }) => {
-                                      if (className === 'language-herb-card') {
-                                        cardCount++;
-                                        if (!showAll && cardCount > CARD_LIMIT) return null;
-                                        const data: Record<string, string> = {};
-                                        String(children).trim().split('\n').forEach(line => {
-                                          const i = line.indexOf(':');
-                                          if (i > -1) {
-                                            const k = line.slice(0, i).trim();
-                                            const v = line.slice(i + 1).trim();
-                                            if (k) data[k] = v;
-                                          }
-                                        });
-                                        return (
-                                          <HerbCard
-                                            name={data['약재명'] || ''}
-                                            pid={data['_pid']}
-                                            grade={data['구분']}
-                                            price={data['근당가격']}
-                                            month={data['기준월']}
-                                            pack={data['포장단위']}
-                                            box={data['박스수량']}
-                                            maker={data['제약사']}
-                                          />
-                                        );
-                                      }
-                                      return <code className={className}>{children}</code>;
-                                    },
-                                    a: ({ href, children, ...props }) => {
-                                      if (href?.startsWith('/product/')) {
-                                        return (
-                                          <button
-                                            data-product="true"
-                                            onClick={(e) => { e.stopPropagation(); navigate(href); }}
-                                            className="text-left bg-transparent border-none text-[#059669] hover:text-[#047857] hover:underline cursor-pointer transition-colors p-0 m-0 font-semibold text-base"
-                                          >
-                                            {children}
-                                          </button>
-                                        );
-                                      }
-                                      return <a href={href} className="text-[#059669] hover:underline" {...props}>{children}</a>;
-                                    },
-                                    tr: (props) => (
-                                      <tr
-                                        {...props}
-                                        onClick={(e) => {
-                                          if (e.currentTarget.querySelector('th')) return;
-                                          const btn = e.currentTarget.querySelector('[data-product="true"]');
-                                          if (btn) (btn as HTMLButtonElement).click();
-                                        }}
-                                      />
-                                    ),
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeRaw]}
+                            components={{
+                              code: ({ className, children }) => (
+                                <code className={className}>{children}</code>
+                              ),
+                              a: ({ href, children, ...props }) => {
+                                if (href?.startsWith('/product/')) {
+                                  return (
+                                    <button
+                                      data-product="true"
+                                      onClick={(e) => { e.stopPropagation(); navigate(href); }}
+                                      className="text-left bg-transparent border-none text-[#059669] hover:text-[#047857] hover:underline cursor-pointer transition-colors p-0 m-0 font-semibold text-base"
+                                    >
+                                      {children}
+                                    </button>
+                                  );
+                                }
+                                return <a href={href} className="text-[#059669] hover:underline" {...props}>{children}</a>;
+                              },
+                              tr: (props) => (
+                                <tr
+                                  {...props}
+                                  onClick={(e) => {
+                                    if (e.currentTarget.querySelector('th')) return;
+                                    const btn = e.currentTarget.querySelector('[data-product="true"]');
+                                    if (btn) (btn as HTMLButtonElement).click();
                                   }}
-                                >
-                                  {msg.content}
-                                </ReactMarkdown>
-                                {totalCards > CARD_LIMIT && !showAll && (
-                                  <button
-                                    onClick={() => setShowAllCardsMap(prev => ({ ...prev, [idx]: true }))}
-                                    className="mt-1 w-full text-xs text-[#059669] hover:text-[#047857] border border-[#059669]/30 hover:border-[#059669]/60 rounded-lg py-1.5 transition-colors"
-                                  >
-                                    나머지 {totalCards - CARD_LIMIT}개 더 보기
-                                  </button>
-                                )}
-                              </>
-                            );
-                          })()}
+                                />
+                              ),
+                            }}
+                          >
+                            {msg.content}
+                          </ReactMarkdown>
+                          {msg.cards && msg.cards.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {msg.cards.map((c, i) => (
+                                <HerbCard
+                                  key={`${c.data.md_code}-${i}`}
+                                  name={c.data.md_name}
+                                  pid={c.data.md_code}
+                                  maker={c.data.mk_name}
+                                  origin={c.data.mm_origin}
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )
                     ) : (
