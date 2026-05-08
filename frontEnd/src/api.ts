@@ -78,6 +78,19 @@ export interface HerbDetail extends HerbItem {
   warehouseExpired: string;
 }
 
+// ── 챗봇 SSE 카드 데이터 ──────────────────────────────────────
+export interface HerbCardData {
+  md_code: string;
+  md_name: string;
+  mk_code?: string;
+  mk_name?: string;
+  md_medi?: string;
+  // membermedicine API에서만 제공
+  mm_medicine?: string;
+  mm_name?: string;
+  mm_origin?: string;
+}
+
 function authHeaders(): HeadersInit {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
