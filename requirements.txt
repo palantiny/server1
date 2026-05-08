@@ -15,9 +15,6 @@ email-validator>=2.0.0
 # JWT (MVP 로그인)
 python-jose[cryptography]>=3.3.0
 
-# Neo4j AuraDB
-neo4j>=5.0.0
-
 # 비밀번호 해시
 passlib[bcrypt]>=1.7.4
 bcrypt==4.0.1
