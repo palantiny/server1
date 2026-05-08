@@ -68,6 +68,10 @@ async def list_herbs(user: User = Depends(get_current_user)) -> dict[str, Any]:
             seen_md.add(key)
             herbs.append(_shape_list_item(m))
 
+    # null/빈 name 제외 + name 기준 정렬 (DJMEDI 응답에 null name 약재 다수 포함)
+    herbs = [h for h in herbs if h.get("name")]
+    herbs.sort(key=lambda h: h["name"])
+
     return {"herbs": herbs, "total": len(herbs)}
 
 

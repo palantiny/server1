@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time as _time
 from typing import Any
 
 import httpx
@@ -56,13 +57,24 @@ def _validate_response(data: dict[str, Any]) -> list[dict]:
     return data.get("list") or []
 
 
-# ── Redis 캐시 헬퍼 (server1은 Redis 미사용 → no-op) ─────────────────────────
+# ── in-process TTL 캐시 (server1은 Redis 미사용, 단일 worker 가정) ──────────
+# {key: (expires_at_monotonic, data)}
+_inproc_cache: dict[str, tuple[float, list[dict]]] = {}
+
+
 async def _cache_get(key: str) -> list[dict] | None:
-    return None
+    item = _inproc_cache.get(key)
+    if item is None:
+        return None
+    expires_at, data = item
+    if _time.monotonic() > expires_at:
+        _inproc_cache.pop(key, None)
+        return None
+    return data
 
 
 async def _cache_set(key: str, data: list[dict], ttl: int) -> None:
-    pass
+    _inproc_cache[key] = (_time.monotonic() + ttl, data)
 
 
 # ── 기본 API 함수 ─────────────────────────────────────────────────────────────
