@@ -2,6 +2,7 @@ const API_BASE = `${import.meta.env.VITE_API_BASE_URL ?? ""}/api/v1`;
 
 /** localStorage 키 (MVP 로그인 JWT) */
 export const TOKEN_STORAGE_KEY = "palantiny_token";
+export const CFCODE_STORAGE_KEY = "palantiny_cfcode";
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -14,6 +15,24 @@ export function setToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem(CFCODE_STORAGE_KEY);
+}
+
+export function setCfcode(cfcode: string | null): void {
+  if (cfcode) {
+    localStorage.setItem(CFCODE_STORAGE_KEY, cfcode);
+  } else {
+    localStorage.removeItem(CFCODE_STORAGE_KEY);
+  }
+}
+
+export function getCfcode(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(CFCODE_STORAGE_KEY);
+}
+
+export function clearCfcode(): void {
+  localStorage.removeItem(CFCODE_STORAGE_KEY);
 }
 
 export async function loginUser(username: string, password: string): Promise<void> {
@@ -36,8 +55,9 @@ export async function loginUser(username: string, password: string): Promise<voi
     }
     throw new Error(message);
   }
-  const data = (await res.json()) as { access_token: string };
+  const data = (await res.json()) as { access_token: string; cfcode?: string | null };
   setToken(data.access_token);
+  setCfcode(data.cfcode ?? null);
 }
 
 export interface HerbItem {

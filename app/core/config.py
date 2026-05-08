@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     # MVP 로그인 (admin / 1234 등)
     ADMIN_ID: str = "admin"
     ADMIN_PASSWORD: str = "1234"
+    ADMIN_CFCODE: str = "dj"
     JWT_SECRET: str = "change-me-in-production"
     JWT_EXPIRE_HOURS: int = 24
 

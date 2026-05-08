@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
+from app.core.config import get_settings
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
 
@@ -38,6 +39,7 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    cfcode: str | None = None
 
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
@@ -90,4 +92,6 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Login
         username=user.username,
         role=user.role,
     )
-    return LoginResponse(access_token=token)
+    settings = get_settings()
+    cfcode = user.cfcode or (settings.ADMIN_CFCODE if user.role == "admin" else None)
+    return LoginResponse(access_token=token, cfcode=cfcode)

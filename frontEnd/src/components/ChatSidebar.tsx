@@ -4,7 +4,7 @@ import { MessageCircle, X, Send, RotateCcw, ChevronRight, ChevronDown } from 'lu
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { type HerbCardData } from '../api';
+import { type HerbCardData, getCfcode } from '../api';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -242,7 +242,11 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
       const postResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? ''}/api/v1/chat/${sessionId}/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: backendPayloadMessage, user_id: 'user' }),
+        body: JSON.stringify({
+          message: backendPayloadMessage,
+          user_id: 'user',
+          cfcode: getCfcode(),
+        }),
       });
       if (!postResponse.ok) throw new Error('메시지 전송에 실패했습니다.');
 
