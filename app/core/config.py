@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # DJMEDI 약재 연동 API (PDF 기준 DEV URL, 운영 시 REAL URL로 변경)
     DJMEDI_BASE_URL: str = "https://devapi.djmedi.net/djherb/"
-    DJMEDI_CFAUTHKEY: str = ""
+    DJMEDI_CFAUTHKEY: str = "HERBfHShheT88iuYgNaDvDwgF9X5kBrJ"
 
 
 @lru_cache
