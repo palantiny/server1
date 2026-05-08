@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { ArrowLeft, ShoppingCart, Heart, User, Bell, Search, FileText, Plus, Minus, Package, Truck, Loader2, Leaf } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Heart, User, Bell, Search, FileText, Plus, Minus, Package, Loader2, Leaf } from 'lucide-react';
 import { LogoutButton } from './LogoutButton';
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
@@ -153,34 +153,18 @@ export function ProductDetail() {
               <h2 className="text-xl font-bold text-[#191F28] mb-6">약재 상세 정보</h2>
 
               <div className="space-y-4">
-                {herb.code && (
-                  <div className="flex border-b border-gray-100 pb-3">
-                    <div className="w-32 text-sm font-medium text-gray-600">제품 코드</div>
-                    <div className="flex-1 text-sm text-[#191F28]">{herb.code}</div>
-                  </div>
-                )}
+                <div className="flex border-b border-gray-100 pb-3">
+                  <div className="w-32 text-sm font-medium text-gray-600">약재명</div>
+                  <div className="flex-1 text-sm text-[#191F28]">{herb.name}</div>
+                </div>
+                <div className="flex border-b border-gray-100 pb-3">
+                  <div className="w-32 text-sm font-medium text-gray-600">원산지</div>
+                  <div className="flex-1 text-sm text-[#191F28]">{herb.origin || '미상'}</div>
+                </div>
                 {herb.manufacturer && (
-                  <div className="flex border-b border-gray-100 pb-3">
+                  <div className="flex pb-3">
                     <div className="w-32 text-sm font-medium text-gray-600">제조사</div>
                     <div className="flex-1 text-sm text-[#191F28]">{herb.manufacturer}</div>
-                  </div>
-                )}
-                {herb.origin && (
-                  <div className="flex border-b border-gray-100 pb-3">
-                    <div className="w-32 text-sm font-medium text-gray-600">원산지</div>
-                    <div className="flex-1 text-sm text-[#191F28]">{herb.origin}</div>
-                  </div>
-                )}
-                {herb.warehouseMaker && (
-                  <div className="flex border-b border-gray-100 pb-3">
-                    <div className="w-32 text-sm font-medium text-gray-600">입고 업체</div>
-                    <div className="flex-1 text-sm text-[#191F28]">{herb.warehouseMaker}</div>
-                  </div>
-                )}
-                {herb.warehouseOrigin && (
-                  <div className="flex pb-3">
-                    <div className="w-32 text-sm font-medium text-gray-600">입고 원산지</div>
-                    <div className="flex-1 text-sm text-[#191F28]">{herb.warehouseOrigin}</div>
                   </div>
                 )}
               </div>
@@ -208,14 +192,12 @@ export function ProductDetail() {
           {/* Right Column - Sticky Product Info & Purchase */}
           <div className="sticky top-6">
             <div className="bg-white rounded-[12px] border border-gray-200 p-6">
-              {/* Category */}
-              <div className="text-sm text-gray-500 mb-2">한약재</div>
-
               {/* Product Title */}
               <h1 className="text-xl font-bold text-[#191F28] mb-1">{herb.name}</h1>
 
+              <p className="text-sm text-gray-500 mb-1">원산지: {herb.origin || '미상'}</p>
               {herb.manufacturer && (
-                <p className="text-sm text-gray-500 mb-3">{herb.manufacturer}</p>
+                <p className="text-sm text-gray-500 mb-3">제조사: {herb.manufacturer}</p>
               )}
 
               <div className="border-t border-gray-200 my-4"></div>
@@ -246,10 +228,7 @@ export function ProductDetail() {
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-2 mb-4">
-                <Button className="w-full h-12 bg-[#059669] hover:bg-[#047857] text-white rounded-[8px]">
-                  바로구매
-                </Button>
+              <div className="space-y-2">
                 <Button
                   variant="outline"
                   onClick={handleAddToCart}
@@ -262,22 +241,6 @@ export function ProductDetail() {
                 >
                   {cartAdded ? '장바구니에 담겼습니다!' : cartLoading ? '담는 중...' : '장바구니'}
                 </Button>
-              </div>
-
-              <div className="border-t border-gray-200 my-4"></div>
-
-              {/* Delivery Information */}
-              <div className="space-y-3">
-                <div className="flex items-start justify-between py-2">
-                  <div className="flex items-center gap-2">
-                    <Truck className="w-4 h-4 text-gray-600" />
-                    <span className="text-sm text-gray-700">일반 배송</span>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-sm font-medium text-[#191F28]">3,000원</span>
-                    <span className="text-xs text-gray-500">평균 2-3일 이내 도착</span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
