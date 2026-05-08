@@ -50,6 +50,9 @@ export function BuyerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const PAGE_SIZE = 30;
+  const [currentPage, setCurrentPage] = useState(1);
+
   useEffect(() => {
     fetchHerbs()
       .then((data) => {
@@ -94,6 +97,17 @@ export function BuyerDashboard() {
       return 0;
     }),
   [herbs, searchTerm, selectedOrigins, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedProducts = filteredProducts.slice(
+    (safeCurrentPage - 1) * PAGE_SIZE,
+    safeCurrentPage * PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedOrigins, sortBy]);
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
@@ -275,7 +289,7 @@ export function BuyerDashboard() {
             {/* Product Grid - 챗봇 열리면 4열, 닫히면 5열 */}
             {!loading && !error && (
               <div className={`grid gap-4 ${isChatOpen ? 'grid-cols-4' : 'grid-cols-5'}`}>
-                {filteredProducts.map((herb) => (
+                {paginatedProducts.map((herb) => (
                   <ProductCard
                     key={herb.id}
                     id={herb.id}
@@ -285,6 +299,15 @@ export function BuyerDashboard() {
                   />
                 ))}
               </div>
+            )}
+
+            {/* 페이지 번호 navigation */}
+            {!loading && !error && totalPages > 1 && (
+              <Pagination
+                currentPage={safeCurrentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             )}
 
             {/* 결과 없을 때 */}
@@ -297,6 +320,87 @@ export function BuyerDashboard() {
         </div>
       </div>
 
+    </div>
+  );
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const windowSize = 2;
+  const start = Math.max(1, currentPage - windowSize);
+  const end = Math.min(totalPages, currentPage + windowSize);
+  const pages: number[] = [];
+  for (let p = start; p <= end; p++) pages.push(p);
+
+  const btnBase =
+    "min-w-[36px] h-9 px-3 rounded-md text-sm transition-colors";
+  const btnInactive = `${btnBase} bg-white text-gray-700 hover:bg-gray-100 border border-gray-200`;
+  const btnActive = `${btnBase} bg-[#059669] text-white border border-[#059669]`;
+  const btnDisabled = `${btnBase} bg-gray-50 text-gray-300 border border-gray-100 cursor-not-allowed`;
+
+  return (
+    <div className="flex items-center justify-center gap-1 mt-6 mb-4 flex-wrap">
+      <button
+        type="button"
+        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+        disabled={currentPage <= 1}
+        className={currentPage <= 1 ? btnDisabled : btnInactive}
+      >
+        이전
+      </button>
+
+      {start > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={() => onPageChange(1)}
+            className={btnInactive}
+          >
+            1
+          </button>
+          {start > 2 && <span className="px-1 text-gray-400">…</span>}
+        </>
+      )}
+
+      {pages.map((p) => (
+        <button
+          key={p}
+          type="button"
+          onClick={() => onPageChange(p)}
+          className={p === currentPage ? btnActive : btnInactive}
+        >
+          {p}
+        </button>
+      ))}
+
+      {end < totalPages && (
+        <>
+          {end < totalPages - 1 && <span className="px-1 text-gray-400">…</span>}
+          <button
+            type="button"
+            onClick={() => onPageChange(totalPages)}
+            className={btnInactive}
+          >
+            {totalPages}
+          </button>
+        </>
+      )}
+
+      <button
+        type="button"
+        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+        disabled={currentPage >= totalPages}
+        className={currentPage >= totalPages ? btnDisabled : btnInactive}
+      >
+        다음
+      </button>
     </div>
   );
 }
