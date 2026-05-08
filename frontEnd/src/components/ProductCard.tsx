@@ -7,29 +7,16 @@ interface ProductCardProps {
   id: string;
   name: string;
   origin: string;
-  price: number;
-  stockStatus: 'high' | 'medium' | 'low' | 'out';
   image?: string;
   manufacturer?: string;
-  packagingUnitG?: string;
-  qty?: number;
 }
-
-const stockStatusConfig = {
-  high: { label: '재고 충분', color: 'text-green-600' },
-  medium: { label: '재고 보통', color: 'text-yellow-600' },
-  low: { label: '재고 부족', color: 'text-orange-600' },
-  out: { label: '품절', color: 'text-red-600' },
-};
 
 export function ProductCard({
   id,
   name,
   origin,
-  price,
-  stockStatus,
   image,
-  packagingUnitG,
+  manufacturer,
 }: ProductCardProps) {
   const [cartLoading, setCartLoading] = useState(false);
   const [cartAdded, setCartAdded] = useState(false);
@@ -37,10 +24,10 @@ export function ProductCard({
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (cartLoading || stockStatus === 'out') return;
+    if (cartLoading) return;
     setCartLoading(true);
     try {
-      await addToCart({ product_id: id, product_name: name, price, quantity: 1 });
+      await addToCart({ product_id: id, product_name: name, price: 0, quantity: 1 });
       window.dispatchEvent(new Event('cart-updated'));
       setCartAdded(true);
       setTimeout(() => setCartAdded(false), 2000);
@@ -50,8 +37,6 @@ export function ProductCard({
       setCartLoading(false);
     }
   };
-
-  const stock = stockStatusConfig[stockStatus] || stockStatusConfig.high;
 
   return (
     <Link to={`/product/${id}`}>
@@ -75,24 +60,15 @@ export function ProductCard({
             {name}
           </h3>
 
-          {/* Origin & Stock */}
+          {/* Origin */}
           <div className="flex items-center justify-between text-xs mb-2">
             <span className="text-gray-500">{origin || '원산지 미상'}</span>
-            <span className={stock.color}>{stock.label}</span>
           </div>
 
-          {/* Packaging */}
-          {packagingUnitG && (
-            <div className="text-xs text-gray-400 mb-1">{packagingUnitG}g</div>
+          {/* Manufacturer */}
+          {manufacturer && (
+            <div className="text-xs text-gray-400 mb-3 truncate">{manufacturer}</div>
           )}
-
-          {/* Price */}
-          <div className="mb-3">
-            <div className="text-lg font-semibold text-[#059669]">
-              {price ? `₩${price.toLocaleString()}` : '가격 문의'}
-              {price > 0 && <span className="text-sm font-normal text-gray-500 ml-1">부터</span>}
-            </div>
-          </div>
 
           {/* Buttons */}
           <div className="flex gap-2">
@@ -103,12 +79,10 @@ export function ProductCard({
             </button>
             <button
               onClick={handleAddToCart}
-              disabled={cartLoading || stockStatus === 'out'}
+              disabled={cartLoading}
               className={`flex-1 py-2 flex items-center justify-center gap-1.5 text-sm transition-all text-white rounded-lg border ${
                 cartAdded
                   ? 'bg-[#047857] border-[#047857]'
-                  : stockStatus === 'out'
-                  ? 'bg-gray-300 border-gray-300 cursor-not-allowed'
                   : 'bg-[#059669] border-[#059669] hover:bg-[#047857] hover:border-[#047857]'
               }`}
             >
