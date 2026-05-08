@@ -6,6 +6,7 @@ GET /herbs/{md_code} : 약재 상세
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -13,7 +14,11 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_current_user
 from app.models.user import User
-from app.services.djmedi_service import smart_search
+from app.services.djmedi_service import (
+    get_maker_list,
+    get_medicine_by_maker,
+    smart_search,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,23 +42,24 @@ async def list_herbs(user: User = Depends(get_current_user)) -> dict[str, Any]:
     원산지가 필요한 사용자는 상세 페이지에서 cfcode 기반 my_medicines 조회.
     """
     try:
-        _, makers = await smart_search(intent="get_maker_list")
+        makers = await get_maker_list()
     except Exception as e:
         logger.exception("get_maker_list 실패")
         raise HTTPException(status_code=503, detail="약재 목록 조회에 실패했습니다.") from e
 
+    mk_codes = [m.get("mk_code") for m in makers if m.get("mk_code")]
+    results = await asyncio.gather(
+        *(get_medicine_by_maker(c) for c in mk_codes),
+        return_exceptions=True,
+    )
+
     herbs: list[dict] = []
     seen_md: set[str] = set()
-    for maker in makers:
-        mk_code = maker.get("mk_code")
-        if not mk_code:
+    for r in results:
+        if isinstance(r, Exception):
+            logger.warning("get_medicine_by_maker 실패: %s", r)
             continue
-        try:
-            _, meds = await smart_search(intent="get_herb_by_maker", maker_name=maker.get("mk_name"))
-        except Exception as e:
-            logger.warning("get_herb_by_maker 실패 (mk=%s): %s", mk_code, e)
-            continue
-        for m in meds:
+        for m in r:
             if m.get("_type") == "notice":
                 continue
             key = m.get("md_code") or ""
@@ -69,21 +75,25 @@ async def list_herbs(user: User = Depends(get_current_user)) -> dict[str, Any]:
 async def get_herb_detail(md_code: str, user: User = Depends(get_current_user)) -> dict[str, Any]:
     """약재 상세.
 
-    md_code로 herbmedicine 전수 조회 후 매칭 1건 반환.
+    모든 제조사의 약재를 병렬 조회 후 md_code 매칭 1건 반환.
     cfcode가 있으면 my_medicines로 mm_origin 보강.
     """
     try:
-        _, makers = await smart_search(intent="get_maker_list")
+        makers = await get_maker_list()
     except Exception as e:
         raise HTTPException(status_code=503, detail="약재 상세 조회 실패") from e
 
+    mk_codes = [m.get("mk_code") for m in makers if m.get("mk_code")]
+    results = await asyncio.gather(
+        *(get_medicine_by_maker(c) for c in mk_codes),
+        return_exceptions=True,
+    )
+
     found: dict | None = None
-    for maker in makers:
-        try:
-            _, meds = await smart_search(intent="get_herb_by_maker", maker_name=maker.get("mk_name"))
-        except Exception:
+    for r in results:
+        if isinstance(r, Exception):
             continue
-        for m in meds:
+        for m in r:
             if m.get("md_code") == md_code:
                 found = m
                 break
