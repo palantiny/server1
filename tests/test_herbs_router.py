@@ -1,64 +1,137 @@
-"""/herbs 라우터 단위 테스트 — DJMEDI 함수 mock."""
+"""/herbs 라우터 단위 테스트 — list_user_medicines mock."""
 from unittest.mock import patch
 import pytest
 from httpx import AsyncClient, ASGITransport
 
 
-@pytest.fixture
-def auth_token(monkeypatch):
-    """단일 admin 로그인 우회: 인증 의존성 mock."""
-    from app.api import deps
+def _override_user(cfcode: str | None, role: str = "admin"):
+    """app.dependency_overrides에 넣을 fake get_current_user 팩토리."""
     from app.models.user import User
 
     async def fake_get_current_user():
-        return User(user_id="admin", cfcode="dj", role="admin", partner_token="x")
+        return User(
+            user_id="admin",
+            username="admin",
+            cfcode=cfcode,
+            role=role,
+            partner_token="x",
+            hashed_password="x",
+        )
 
-    monkeypatch.setattr(deps, "get_current_user", fake_get_current_user)
+    return fake_get_current_user
+
+
+@pytest.fixture
+def auth_token():
+    """단일 admin 로그인 우회: dependency_overrides로 인증 의존성 교체."""
+    from app.api.deps import get_current_user
+    from app.web_main import app
+
+    app.dependency_overrides[get_current_user] = _override_user("dj")
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture
+def auth_token_no_cfcode():
+    """cfcode 없는 비-admin 사용자 (admin은 ADMIN_CFCODE fallback이 있어 별도 테스트)."""
+    from app.api.deps import get_current_user
+    from app.web_main import app
+
+    app.dependency_overrides[get_current_user] = _override_user(None, role="user")
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.mark.asyncio
-async def test_get_herbs_returns_djmedi_aggregated_list(auth_token):
-    fake_makers = [{"mk_code": "0606", "mk_name": "(주)신흥제약"}]
-    fake_meds = [{"md_code": "HD1", "md_medi": "M1", "md_name": "감초", "mk_code": "0606", "mk_name": "(주)신흥제약"}]
+async def test_get_herbs_returns_user_medicines_for_cfcode(auth_token):
+    fake_user_meds = [
+        {"md_code": "M1", "md_name": "감초", "mm_origin": "한국", "mk_name": "디제이허브"},
+        {"md_code": "M2", "md_name": "황기", "mm_origin": "수입", "mk_name": "디제이허브"},
+    ]
 
-    async def fake_get_maker_list():
-        return fake_makers
-
-    async def fake_get_medicine_by_maker(mk_code):
-        return fake_meds if mk_code == "0606" else []
+    async def fake_list_user_medicines(cfcode):
+        assert cfcode == "dj"
+        return fake_user_meds
 
     from app.web_main import app
-    with patch("app.api.v1.herbs.get_maker_list", side_effect=fake_get_maker_list), \
-         patch("app.api.v1.herbs.get_medicine_by_maker", side_effect=fake_get_medicine_by_maker):
+    with patch("app.api.v1.herbs.list_user_medicines", side_effect=fake_list_user_medicines):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             res = await client.get("/api/v1/herbs", headers={"Authorization": "Bearer x"})
     assert res.status_code == 200
     data = res.json()
-    assert data["total"] >= 1
-    assert any(h["name"] == "감초" for h in data["herbs"])
+    assert data["total"] == 2
+    names = {h["name"] for h in data["herbs"]}
+    assert names == {"감초", "황기"}
+    감초 = next(h for h in data["herbs"] if h["name"] == "감초")
+    assert 감초["origin"] == "한국"
+    assert 감초["manufacturer"] == "디제이허브"
 
 
 @pytest.mark.asyncio
-async def test_get_herb_detail_returns_djmedi_item(auth_token):
-    fake_makers = [{"mk_code": "0606", "mk_name": "씨케이"}]
-    fake_meds = [{"md_code": "HD1", "md_medi": "M1", "md_name": "감초", "mk_code": "0606", "mk_name": "씨케이"}]
+async def test_get_herbs_returns_empty_when_no_cfcode(auth_token_no_cfcode):
+    """cfcode가 None인 user는 빈 목록 반환."""
+    from app.web_main import app
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        res = await client.get("/api/v1/herbs", headers={"Authorization": "Bearer x"})
+    assert res.status_code == 200
+    assert res.json() == {"herbs": [], "total": 0}
 
-    async def fake_get_maker_list():
-        return fake_makers
 
-    async def fake_get_medicine_by_maker(mk_code):
-        return fake_meds if mk_code == "0606" else []
+@pytest.mark.asyncio
+async def test_get_herb_detail_returns_three_fields(auth_token):
+    fake_user_meds = [
+        {"md_code": "M1", "md_name": "감초", "mm_origin": "한국", "mk_name": "디제이허브"},
+    ]
 
-    async def fake_smart_search(intent, **kwargs):
-        return ("membermedicine", [])
+    async def fake_list_user_medicines(cfcode):
+        return fake_user_meds
 
     from app.web_main import app
-    with patch("app.api.v1.herbs.get_maker_list", side_effect=fake_get_maker_list), \
-         patch("app.api.v1.herbs.get_medicine_by_maker", side_effect=fake_get_medicine_by_maker), \
-         patch("app.api.v1.herbs.smart_search", side_effect=fake_smart_search):
+    with patch("app.api.v1.herbs.list_user_medicines", side_effect=fake_list_user_medicines):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            res = await client.get("/api/v1/herbs/HD1", headers={"Authorization": "Bearer x"})
+            res = await client.get("/api/v1/herbs/M1", headers={"Authorization": "Bearer x"})
     assert res.status_code == 200
     data = res.json()
-    assert data["id"] == "HD1"
+    # 정확히 4개 키만 (id 포함)
+    assert set(data.keys()) == {"id", "name", "origin", "manufacturer"}
     assert data["name"] == "감초"
+    assert data["origin"] == "한국"
+    assert data["manufacturer"] == "디제이허브"
+
+
+@pytest.mark.asyncio
+async def test_get_herb_detail_returns_404_when_not_in_user_inventory(auth_token):
+    async def fake_list_user_medicines(cfcode):
+        return []  # 사용자 미보유
+
+    from app.web_main import app
+    with patch("app.api.v1.herbs.list_user_medicines", side_effect=fake_list_user_medicines):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            res = await client.get("/api/v1/herbs/M1", headers={"Authorization": "Bearer x"})
+    assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_herbs_uses_admin_cfcode_fallback_when_admin_has_no_cfcode():
+    """admin role + cfcode=None → ADMIN_CFCODE("dj") fallback 사용."""
+    from app.api.deps import get_current_user
+    from app.web_main import app
+
+    app.dependency_overrides[get_current_user] = _override_user(None, role="admin")
+
+    async def fake_list_user_medicines(cfcode):
+        # admin fallback이 적용됐다면 cfcode == "dj"
+        assert cfcode == "dj"
+        return [{"md_code": "M1", "md_name": "감초", "mm_origin": "한국", "mk_name": "디제이허브"}]
+
+    try:
+        with patch("app.api.v1.herbs.list_user_medicines", side_effect=fake_list_user_medicines):
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                res = await client.get("/api/v1/herbs", headers={"Authorization": "Bearer x"})
+        assert res.status_code == 200
+        data = res.json()
+        assert data["total"] == 1
+        assert data["herbs"][0]["name"] == "감초"
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)

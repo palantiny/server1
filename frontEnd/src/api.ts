@@ -67,11 +67,7 @@ export interface HerbItem {
   manufacturer: string;  // mk_name
 }
 
-export interface HerbDetail extends HerbItem {
-  code: string;          // md_code (호환용)
-  warehouseMaker: string;
-  warehouseOrigin: string;
-}
+export interface HerbDetail extends HerbItem {}
 
 // ── 챗봇 SSE 카드 데이터 ──────────────────────────────────────
 export interface HerbCardData {
