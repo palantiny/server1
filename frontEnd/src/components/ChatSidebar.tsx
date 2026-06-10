@@ -4,7 +4,7 @@ import { MessageCircle, X, Send, RotateCcw, ChevronRight, ChevronDown } from 'lu
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { type HerbCardData, getCfcode } from '../api';
+import { addToCart, type HerbCardData } from '../api';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -142,7 +142,6 @@ const DEFAULT_MESSAGES: ChatMessage[] = [
 
 export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
   const navigate = useNavigate();
-  const [frontendContext, setFrontendContext] = useState<'PRICE' | 'ORDER' | null>(null);
   const [message, setMessage] = useState('');
 
   const [sessionId, setSessionId] = useState(() => {
@@ -188,20 +187,6 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
     setMessages(DEFAULT_MESSAGES);
   };
 
-  const simulateTyping = async (text: string) => {
-    setIsStreaming(true);
-    setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-    for (let i = 0; i < text.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 30));
-      setMessages(prev => {
-        const arr = [...prev];
-        arr[arr.length - 1].content = text.slice(0, i + 1);
-        return arr;
-      });
-    }
-    setIsStreaming(false);
-  };
-
   const handleSendMessage = async (textFallback?: string) => {
     const userMessage = typeof textFallback === 'string' ? textFallback : message;
     if (!userMessage.trim() || isStreaming) return;
@@ -209,49 +194,19 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
     setMessage('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
-    if (userMessage === '약재 가격 확인하고 싶어요.') {
-      setFrontendContext('PRICE');
-      setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-      simulateTyping('어떤 약재 가격을 알고 싶으신가요?');
-      return;
-    }
-    if (userMessage === '약재 주문하고 싶어요.') {
-      setFrontendContext('ORDER');
-      setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-      simulateTyping('어떤 약재를 주문하고 싶으신가요?');
-      return;
-    }
-
-    let backendPayloadMessage = userMessage;
-    if (frontendContext === 'PRICE') {
-      backendPayloadMessage = `[약재 가격 확인] ${userMessage}`;
-      setFrontendContext(null);
-    } else if (frontendContext === 'ORDER') {
-      backendPayloadMessage = `[약재 주문] ${userMessage}`;
-      setFrontendContext(null);
-    }
+    // 현재 메시지 직전까지의 대화를 history로 함께 전송 (백엔드 무상태)
+    const history = messages.map(m => ({ role: m.role, content: m.content }));
 
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsStreaming(true);
 
-    const abortController = new AbortController();
     try {
-      const streamPromise = fetch(`${import.meta.env.VITE_API_BASE_URL ?? ''}/api/v1/chat/${sessionId}/stream`, {
-        signal: abortController.signal,
-      });
-      const postResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? ''}/api/v1/chat/${sessionId}/message`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? ''}/api/v1/chat/${sessionId}/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: backendPayloadMessage,
-          user_id: 'user',
-          cfcode: getCfcode(),
-        }),
+        body: JSON.stringify({ message: userMessage, history }),
       });
-      if (!postResponse.ok) throw new Error('메시지 전송에 실패했습니다.');
-
-      const response = await streamPromise;
-      if (!response.body) throw new Error('스트림을 연결할 수 없습니다.');
+      if (!response.ok || !response.body) throw new Error('메시지 전송에 실패했습니다.');
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -278,28 +233,24 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                   arr[arr.length - 1].isError = true;
                   return arr;
                 });
-              } else if (data.type === 'thinking_token' && data.content) {
-                setMessages(prev => {
-                  const arr = [...prev];
-                  arr[arr.length - 1] = {
-                    ...arr[arr.length - 1],
-                    thinking: (arr[arr.length - 1].thinking || '') + data.content,
-                  };
-                  return arr;
-                });
-              } else if (data.type === 'thinking' && data.content) {
-                // 하위 호환: 전체 교체
-                setMessages(prev => {
-                  const arr = [...prev];
-                  arr[arr.length - 1] = { ...arr[arr.length - 1], thinking: data.content };
-                  return arr;
-                });
               } else if (data.type === 'token' && data.content) {
                 setMessages(prev => {
                   const arr = [...prev];
                   arr[arr.length - 1].content += data.content;
                   return arr;
                 });
+              } else if (data.type === 'add_to_cart' && Array.isArray(data.items)) {
+                for (const item of data.items) {
+                  try {
+                    await addToCart({
+                      product_id: item.herb_id,
+                      product_name: item.herb_name,
+                      price: item.price ?? 0,
+                      quantity: item.quantity ?? 1,
+                    });
+                  } catch { /* 개별 담기 실패는 무시 */ }
+                }
+                window.dispatchEvent(new Event('cart-updated'));
               } else if (data.type === 'herb_card' && data.data) {
                 setMessages((prev: ChatMessage[]) => {
                   const newArr = [...prev];
@@ -307,12 +258,6 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                   const newCards = [...(last.cards ?? []), { herb_name: data.herb_name, data: data.data }];
                   newArr[newArr.length - 1] = { ...last, cards: newCards };
                   return newArr;
-                });
-              } else if (data.type === 'correction' && data.content) {
-                setMessages(prev => {
-                  const arr = [...prev];
-                  arr[arr.length - 1].content = data.content;
-                  return arr;
                 });
               }
             } catch { /* ignore */ }
@@ -326,7 +271,6 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
       ]);
     } finally {
       setIsStreaming(false);
-      abortController.abort();
     }
   };
 
@@ -474,7 +418,7 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
               {messages.length === 1 && (
                 <div className="space-y-2 mt-2">
                   <p className="text-xs text-gray-400 text-center">자주 묻는 질문</p>
-                  {['약재 가격 확인하고 싶어요.', '약재 주문하고 싶어요.'].map((q) => (
+                  {['가장 저렴한 약재가 뭐예요?', '감초 효능이 궁금해요', '배송은 얼마나 걸려요?'].map((q) => (
                     <button
                       key={q}
                       onClick={() => handleSendMessage(q)}
