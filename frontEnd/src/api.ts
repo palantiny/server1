@@ -60,15 +60,6 @@ export async function loginUser(username: string, password: string): Promise<voi
   setCfcode(data.cfcode ?? null);
 }
 
-export interface HerbItem {
-  id: string;            // md_code
-  name: string;          // md_name
-  origin: string;        // mm_origin (cfcode 시) 또는 ""
-  manufacturer: string;  // mk_name
-}
-
-export interface HerbDetail extends HerbItem {}
-
 // ── 챗봇 SSE 카드 데이터 ──────────────────────────────────────
 export interface HerbCardData {
   md_code: string;
@@ -93,20 +84,6 @@ function handle401(res: Response): void {
     clearToken();
     window.location.replace('/login');
   }
-}
-
-export async function fetchHerbs(): Promise<{ herbs: HerbItem[]; total: number }> {
-  const res = await fetch(`${API_BASE}/herbs`, { headers: authHeaders() });
-  handle401(res);
-  if (!res.ok) throw new Error("약재 목록을 불러오는데 실패했습니다.");
-  return res.json();
-}
-
-export async function fetchHerbDetail(id: string): Promise<HerbDetail> {
-  const res = await fetch(`${API_BASE}/herbs/${id}`, { headers: authHeaders() });
-  handle401(res);
-  if (!res.ok) throw new Error("약재 상세 정보를 불러오는데 실패했습니다.");
-  return res.json();
 }
 
 // ── MyPage 타입 ──────────────────────────────────────────

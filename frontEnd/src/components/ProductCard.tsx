@@ -1,22 +1,22 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { ShoppingCart, Leaf, Check } from 'lucide-react';
+import { ShoppingCart, Check } from 'lucide-react';
 import { addToCart } from '../api';
 
 interface ProductCardProps {
   id: string;
   name: string;
-  origin: string;
-  image?: string;
-  manufacturer?: string;
+  price: string;
+  image: string;
+  availableSellers: number;
 }
 
 export function ProductCard({
   id,
   name,
-  origin,
+  price,
   image,
-  manufacturer,
+  availableSellers,
 }: ProductCardProps) {
   const [cartLoading, setCartLoading] = useState(false);
   const [cartAdded, setCartAdded] = useState(false);
@@ -27,7 +27,8 @@ export function ProductCard({
     if (cartLoading) return;
     setCartLoading(true);
     try {
-      await addToCart({ product_id: id, product_name: name, price: 0, quantity: 1 });
+      const priceValue = parseInt(price.replace(/[^\d]/g, ''), 10) || 0;
+      await addToCart({ product_id: id, product_name: name, price: priceValue, quantity: 1 });
       window.dispatchEvent(new Event('cart-updated'));
       setCartAdded(true);
       setTimeout(() => setCartAdded(false), 2000);
@@ -42,33 +43,32 @@ export function ProductCard({
     <Link to={`/product/${id}`}>
       <div className="bg-white rounded-[12px] border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer group">
         {/* Product Image */}
-        <div className="w-full aspect-[4/3] overflow-hidden bg-gray-100 flex items-center justify-center">
-          {image ? (
-            <img
-              src={image}
-              alt={name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <Leaf className="w-16 h-16 text-[#059669]/30" />
-          )}
+        <div className="w-full aspect-[4/3] overflow-hidden bg-gray-100">
+          <img
+            src={image}
+            alt={name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
         </div>
 
         {/* Product Info */}
         <div className="p-3">
-          <h3 className="text-[#191F28] font-semibold text-base mb-1 leading-tight truncate">
+          <h3 className="text-[#191F28] font-semibold text-base mb-2 leading-tight">
             {name}
           </h3>
 
-          {/* Origin */}
-          <div className="flex items-center justify-between text-xs mb-2">
-            <span className="text-gray-500">{origin || '원산지 미상'}</span>
+          {/* Available Sellers Count */}
+          <div className="text-xs text-gray-500 mb-2">
+            재고 보유 판매처 {availableSellers}곳
           </div>
 
-          {/* Manufacturer */}
-          {manufacturer && (
-            <div className="text-xs text-gray-400 mb-3 truncate">{manufacturer}</div>
-          )}
+          {/* Price */}
+          <div className="mb-3">
+            <div className="text-lg font-semibold text-[#059669]">
+              {price}
+              <span className="text-sm font-normal text-gray-500 ml-1">부터</span>
+            </div>
+          </div>
 
           {/* Buttons */}
           <div className="flex gap-2">
