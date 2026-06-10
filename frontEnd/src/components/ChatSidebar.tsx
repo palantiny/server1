@@ -366,9 +366,10 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                         <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_p]:text-base [&_p]:leading-relaxed [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mb-2 [&_ul]:text-base [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:mb-2 [&_ol]:text-base [&_li]:text-base [&_li]:leading-relaxed [&_a]:underline [&_table]:w-full [&_table]:my-2 [&_table]:border-collapse [&_th]:border [&_th]:border-[#059669]/20 [&_th]:bg-[#059669]/10 [&_th]:p-2 [&_th]:text-left [&_th]:text-sm [&_th]:font-semibold [&_th]:text-[#059669] [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_td]:text-sm [&_td]:whitespace-nowrap [&_tbody>tr]:cursor-pointer [&_tbody>tr:hover]:bg-gray-50 [&_tbody>tr]:transition-colors break-words overflow-x-auto text-base leading-relaxed">
                           {msg.thinking && <ThinkingBox thinking={msg.thinking} />}
                           <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
+                            remarkPlugins={[[remarkGfm, { singleTilde: false }]]}
                             rehypePlugins={[rehypeRaw]}
                             components={{
+                              del: ({ children }) => <span>{children}</span>,
                               code: ({ className, children }) => (
                                 <code className={className}>{children}</code>
                               ),
