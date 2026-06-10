@@ -233,6 +233,15 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                   arr[arr.length - 1].isError = true;
                   return arr;
                 });
+              } else if (data.type === 'thinking_token' && data.content) {
+                setMessages(prev => {
+                  const arr = [...prev];
+                  arr[arr.length - 1] = {
+                    ...arr[arr.length - 1],
+                    thinking: (arr[arr.length - 1].thinking || '') + data.content,
+                  };
+                  return arr;
+                });
               } else if (data.type === 'token' && data.content) {
                 setMessages(prev => {
                   const arr = [...prev];
