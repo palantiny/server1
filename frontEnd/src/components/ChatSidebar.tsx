@@ -370,6 +370,8 @@ export function ChatSidebar({ isOpen, onToggle }: ChatSidebarProps) {
                             rehypePlugins={[rehypeRaw]}
                             components={{
                               del: ({ children }) => <span>{children}</span>,
+                              s: ({ children }) => <span>{children}</span>,
+                              strike: ({ children }) => <span>{children}</span>,
                               code: ({ className, children }) => (
                                 <code className={className}>{children}</code>
                               ),
